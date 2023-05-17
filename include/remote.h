@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <sbus.h>
 
-bfs::SbusRx sbus_rx(&Serial6);
+bfs::SbusRx sbus_rx(&Serial2);
 
 bfs::SbusData data;
 
@@ -30,7 +30,6 @@ void remote_setup() {
         signal_lost = data.lost_frame;
 
         if (arming) {
-            Serial.println("Please disarm the remote for safety");
             while (arming) {
                 if (sbus_rx.Read()) {
                     data = sbus_rx.data();
@@ -41,7 +40,6 @@ void remote_setup() {
         }
 
         if (signal_lost) {
-            Serial.println("Signal lost, please reconnect");
             while (signal_lost) {
                 if (sbus_rx.Read()) {
                     data = sbus_rx.data();
@@ -51,8 +49,6 @@ void remote_setup() {
             }
         }
     }
-
-    Serial.println("Remote setup complete");
 }
 
 void remote_loop() {
