@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <sbus.h>
+#include <Configuration.h>
 
 bfs::SbusRx sbus_rx(&Serial2);
 
@@ -60,10 +61,10 @@ void remote_loop() {
     ch_throttle = data.ch[2] * 0.615f + 890;
     ch_yaw = data.ch[3] * 0.615f + 890;
 
-    ch_roll = constrain(ch_roll, 1000, 2000);
-    ch_pitch = constrain(ch_pitch, 1000, 2000);
-    ch_throttle = constrain(ch_throttle, 1000, 2000);
-    ch_yaw = constrain(ch_yaw, 1000, 2000);
+    ch_roll = constrain(ch_roll, motor_pwm_min, motor_pwm_max);
+    ch_pitch = constrain(ch_pitch, motor_pwm_min, motor_pwm_max);
+    ch_throttle = constrain(ch_throttle, motor_pwm_min, motor_pwm_max);
+    ch_yaw = constrain(ch_yaw, motor_pwm_min, motor_pwm_max);
 
     arming = data.ch[4] > 1500 ? true : false;
     alt_hold_mode = data.ch[5] > 1500 ? true : false;

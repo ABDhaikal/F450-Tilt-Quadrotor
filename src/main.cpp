@@ -44,19 +44,19 @@ void loop() {
   control();
 
 
-  roll_sensor = roll;
+  roll_sensor = pitch;
   yaw_sensor = yaw;
-  pitch_sensor = pitch;
-  roll_rate_sensor = gyro.x/4;
+  pitch_sensor = roll;
+  roll_rate_sensor = -gyro.y/4;
   yaw_rate_sensor = -gyro.z/4;
-  pitch_rate_sensor = -gyro.y/4;
+  pitch_rate_sensor = gyro.x/4;
 
   if (arming)
   {
-    m1 = (ch_throttle-988)+(thrust_to_pwm((u1/2)+(u2/2)+(u4/4)) - (ch_pitch-1500));
-    m2 = (ch_throttle-988)+(thrust_to_pwm((u1/2)-(u3/2)-(u4/4)) + (ch_roll-1500));
-    m3 = (ch_throttle-988)+(thrust_to_pwm((u1/2)-(u2/2)+(u4/4)) + (ch_pitch-1500));
-    m4 = (ch_throttle-988)+(thrust_to_pwm((u1/2)+(u3/2)-(u4/4)) - (ch_roll-1500));
+    m1 = (ch_throttle) + thrust_to_pwm((u3/2)/armleght) - (ch_pitch-1500);
+    m2 = (ch_throttle) - thrust_to_pwm((u2/2)/armleght) + (ch_roll-1500);
+    m3 = (ch_throttle) - thrust_to_pwm((u3/2)/armleght) + (ch_pitch-1500);
+    m4 = (ch_throttle) + thrust_to_pwm((u2/2)/armleght) - (ch_roll-1500);
     // m1 = (ch_throttle) - (ch_pitch-1500);
     // m2 = (ch_throttle) + (ch_roll-1500);
     // m3 = (ch_throttle) + (ch_pitch-1500);
@@ -71,7 +71,7 @@ void loop() {
   }
   motor_loop(m1, m2, m3,m4);
 
-  //debug();
+  debug();
 
   while (micros() - loop_timer < 2000);
   // UART.println(micros() - loop_timer);
@@ -81,29 +81,12 @@ void loop() {
 void debug() {
   String str = "";
 
-  // str += " roll:";
-  // str += roll;
-  // str += " ";
-//    str += " roll_rate:";
-//   str += roll_rate_sensor;
-//   str += " ";
+  str += " r:";
+  str += roll_rate_sensor;
+  str += " ";
+  str += " p:";
+  str += pitch_rate_sensor;
+  str += " ";
 
-// //  str += " factor:";
-// //   str += mpu.getFullScaleGyroRange();
-// //   str += " ";
-//   //  str += " pitchrate:";
-//   // str += pitch_rate_sensor;
-//   // str += " ";
-
-// str += " roll_rate_raw :";
-//   str += gyroX;
-//   str += " ";
-
-  // str += " pitch rate raw:";
-  // str += gyroY;
-  // str += " ";
-
-  
- 
   PC.println(str);
 }

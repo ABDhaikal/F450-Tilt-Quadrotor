@@ -47,12 +47,12 @@ void imu_setup() {
 
 	devStatus = mpu.dmpInitialize();
 
-	mpu.setXGyroOffset(187);
-    mpu.setYGyroOffset(9);
-    mpu.setZGyroOffset(19);
-	mpu.setXAccelOffset(-862);
-	mpu.setYAccelOffset(-495);
-    mpu.setZAccelOffset(1076);
+	mpu.setXGyroOffset(4);
+	mpu.setYGyroOffset(208);
+	mpu.setZGyroOffset(-30);
+	mpu.setXAccelOffset(-1023);
+	mpu.setYAccelOffset(-975);
+	mpu.setZAccelOffset(1829);
 
 	if (devStatus == 0) {
 		mpu.setDMPEnabled(true);
@@ -93,9 +93,9 @@ void imu_loop() {
 		mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
 		// get roll pitch yaw
-		roll = ypr[0] * RAD_TO_DEG;
+		yaw = ypr[0] * RAD_TO_DEG;
 		pitch = ypr[1] * RAD_TO_DEG;
-		yaw = ypr[2] * RAD_TO_DEG;
+		roll = ypr[2] * RAD_TO_DEG;
 		if (yaw < 0) yaw += 360; // yaw stays between 0 and 360
 
 		mpu.dmpGetAccel(&aa, fifoBuffer);
@@ -103,5 +103,6 @@ void imu_loop() {
 		mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
 		mpu.dmpGetGyro(&gyro,fifoBuffer);
 		// TODO: pose estimation
+
 	}
 }
