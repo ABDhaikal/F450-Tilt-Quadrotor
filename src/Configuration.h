@@ -52,7 +52,7 @@ uint32_t debug_timer = 0;
  * @brief Telemetry monitoring
  * 
  */
-//#define Telem
+// #define Telem
 #ifdef Telem
 #define TELEM Serial5
 #define TELEM_Baudrate 57600
@@ -62,12 +62,12 @@ uint32_t debug_timer = 0;
  * @brief quad motor
  *  
  */
-//#define Calibrate_motor
+// #define Calibrate_motor
 
 int motor1_pin = 0;
 int motor2_pin = 2;
-int motor3_pin = 6;
-int motor4_pin = 4;
+int motor3_pin = 4;
+int motor4_pin = 6;
 int motor_pwm_min = 988;
 int motor_pwm_max = 2012;
 
@@ -77,18 +77,23 @@ int motor_pwm_max = 2012;
  */
 int servo1_pin = 1;
 int servo2_pin = 3;
-int servo3_pin = 5;
-int servo4_pin = 9;
-int servo1_offset = 80;
-int servo2_offset = 70;
-int servo3_offset = 0;
-int servo4_offset = -30;
+int servo3_pin = 9;
+int servo4_pin = 5;
+int servo1_offset = 70;
+int servo2_offset = 60;
+int servo3_offset = -10;
+int servo4_offset = -10;
 
 int servo_pwm_min = 988;
 int servo_pwm_max = 2012;
 
 
+//for tunning servos
+// int pwms1 = 1500;
+// int pwms2 = 1500;
+// int pwms3 = 1500;
+// int pwms4 = 1500;
 
 // measurment 
-float armleght = 0.22; //m
+float armleght = 0.23; //m
 float mass = 1.76; //kg

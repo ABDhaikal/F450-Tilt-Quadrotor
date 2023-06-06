@@ -11,6 +11,15 @@
 int m1,m2,m3,m4;
 void debug();
 
+float x_diff;
+float y_diff;
+float z_diff;
+
+float x_last;
+float y_last;
+float z_last;
+
+
 void setup() {
   
   #ifdef Telem
@@ -28,35 +37,40 @@ void setup() {
 
   remote_setup();
   motor_setup();
-  #ifdef Calibrate_motor
-    calibrate_motors();
-  #endif
+ 
   imu_setup();
   //sonar_setup();
 
   digitalWrite(LED_BUILTIN, LOW);
-  loop_timer = micros();
+  // loop_timer = micros();
+
+
+
+
+  // imu_loop();
+  // x_last = roll;
+  // y_last = pitch;
+  // z_last = yaw;
+  // loop_timer = micros();
 }
 
 void loop() {
   imu_loop();
+  
+  roll_sensor = roll;
+  yaw_sensor = yaw;
+  pitch_sensor = pitch;
+  roll_rate_sensor = roll_rate;
+  yaw_rate_sensor = yaw_rate;
+  pitch_rate_sensor = pitch_rate;
   remote_loop();
   control();
-
-
-  roll_sensor = pitch;
-  yaw_sensor = yaw;
-  pitch_sensor = roll;
-  roll_rate_sensor = -gyro.y/4;
-  yaw_rate_sensor = -gyro.z/4;
-  pitch_rate_sensor = gyro.x/4;
-
   if (arming)
   {
-    m1 = (ch_throttle) + thrust_to_pwm((u3/2)/armleght) - (ch_pitch-1500);
-    m2 = (ch_throttle) - thrust_to_pwm((u2/2)/armleght) + (ch_roll-1500);
-    m3 = (ch_throttle) - thrust_to_pwm((u3/2)/armleght) + (ch_pitch-1500);
-    m4 = (ch_throttle) + thrust_to_pwm((u2/2)/armleght) - (ch_roll-1500);
+    m1 = (ch_throttle) + thrust_to_pwm((u3/2)/armleght) - (ch_pitch-1500)+ (ch_yaw-1500);
+    m2 = (ch_throttle) - thrust_to_pwm((u2/2)/armleght) + (ch_roll-1500)- (ch_yaw-1500);
+    m3 = (ch_throttle) - thrust_to_pwm((u3/2)/armleght) + (ch_pitch-1500)+ (ch_yaw-1500);
+    m4 = (ch_throttle) + thrust_to_pwm((u2/2)/armleght) - (ch_roll-1500)-  (ch_yaw-1500);
     // m1 = (ch_throttle) - (ch_pitch-1500);
     // m2 = (ch_throttle) + (ch_roll-1500);
     // m3 = (ch_throttle) + (ch_pitch-1500);
@@ -71,21 +85,76 @@ void loop() {
   }
   motor_loop(m1, m2, m3,m4);
 
-  debug();
-
-  while (micros() - loop_timer < 2000);
-  // UART.println(micros() - loop_timer);
-  loop_timer = micros();
 }
 
 void debug() {
+  int incomingByte = 0;
+  // if (TELEM.available() > 0) {
+  //    // for incoming serial data
+  //   // read the incoming byte:
+  //   incomingByte = TELEM.read();
+  //  };
+  //  if(incomingByte == 'a')
+  //  {
+  //   k_roll += 0.1;
+  //  };
+  //  if(incomingByte == 's')
+  //  {
+  //   k_roll_rate += 0.1;
+  //  };
+  //  if(incomingByte == 'd')
+  //  {
+  //   k_pitch += 0.1;
+  //  };
+  //  if(incomingByte == 'f')
+  //  {
+  //   k_pitch_rate += 0.1;
+  //  };
+  //  if(incomingByte == 'A')
+  //  {
+  //   k_roll -= 0.1;
+  //  };
+  //  if(incomingByte == 'S')
+  //  {
+  //   k_roll_rate -= 0.1;
+  //  };
+  //  if(incomingByte == 'D')
+  //  {
+  //   k_pitch -= 0.1;
+  //  };
+  //  if(incomingByte == 'F')
+  //  {
+  //   k_pitch_rate -= 0.1;
+  //  };
+  
   String str = "";
 
-  str += " r:";
-  str += roll_rate_sensor;
+  // str += " P_roll:";
+  // str += k_roll;
+  // str += " ";
+   
+  // str += " D_roll:";
+  // str += k_roll_rate;
+  // str += " ";
+
+  // str += " P_roll:";
+  // str += k_pitch;
+  // str += " ";
+   
+  // str += " D_roll:";
+  // str += k_pitch_rate;
+  // str += " ";
+  str += " cht:";
+  str += ch_throttle;
   str += " ";
-  str += " p:";
-  str += pitch_rate_sensor;
+  str += " chr:";
+  str += ch_roll;
+  str += " ";
+  str += " chp:";
+  str += ch_pitch;
+  str += " ";
+  str += " chy:";
+  str += ch_yaw;
   str += " ";
 
   PC.println(str);

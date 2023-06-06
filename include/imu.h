@@ -18,6 +18,7 @@ uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
+
 // orientation/motion vars
 Quaternion q;           // [w, x, y, z]         quaternion container
 VectorInt16 aa;         // [x, y, z]            accel sensor measurements
@@ -30,6 +31,15 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 float roll = 0;
 float pitch = 0;
 float yaw = 0;
+float roll_rate = 0;
+float pitch_rate = 0;
+float yaw_rate = 0;
+
+
+// MPU6050 raw;
+// float accelX, accelY, accelZ, gyroX, gyroY, gyroZ;
+// int16_t ax, ay, az, gx, gy, gz;
+
 
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
@@ -94,15 +104,27 @@ void imu_loop() {
 
 		// get roll pitch yaw
 		yaw = ypr[0] * RAD_TO_DEG;
-		pitch = ypr[1] * RAD_TO_DEG;
-		roll = ypr[2] * RAD_TO_DEG;
+		roll = ypr[1] * RAD_TO_DEG;
+		pitch = ypr[2] * RAD_TO_DEG;
 		if (yaw < 0) yaw += 360; // yaw stays between 0 and 360
 
 		mpu.dmpGetAccel(&aa, fifoBuffer);
-        mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-		mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
+        // mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+		// mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
 		mpu.dmpGetGyro(&gyro,fifoBuffer);
+
+		roll_rate = -gyro.y;
+  		yaw_rate = -gyro.z;
+  		pitch_rate =  gyro.x;
+		
 		// TODO: pose estimation
 
+
+
+		// raw.getRotation(&gx, &gy, &gz);
+
+		// gyroX = -gy / 16.4;
+		// gyroY = gx / 16.4;
+		// gyroZ = -gz / 16.4;
 	}
 }

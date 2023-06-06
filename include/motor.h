@@ -36,7 +36,9 @@ void motor_setup() {
     servo2.attach(servo2_pin);
     servo3.attach(servo3_pin);
     servo4.attach(servo4_pin);
-    
+    #ifdef Calibrate_motor
+    calibrate_motors();
+    #endif
     //recenter servo
     servo_loop(1500,1500,1500,1500);
     motor_loop(motor_pwm_min,motor_pwm_min,motor_pwm_min,motor_pwm_min);

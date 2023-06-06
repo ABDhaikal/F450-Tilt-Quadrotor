@@ -14,9 +14,9 @@
 // float k_yaw         = 42.0f;
 // float k_yaw_rate    = 9.0f;
 
-float k_roll        = 22.36;
+float k_roll        = 0;
 // float k_roll        = 0;
-float k_roll_rate   = 27.59;
+float k_roll_rate   = 0;
 
 float k_pitch       = k_roll; 
 float k_pitch_rate  = k_roll_rate;
@@ -33,7 +33,7 @@ int thrust_to_pwm(float input_thrust)
 {
     //int output = (((0.1036*input_thrust)+10)/100*1000)+1000;
     // return ((0.1036*input_thrust)+10)*10;
-    return ((0.0895*input_thrust))*10;
+    return ((0.0871*input_thrust))*10;
 }
 
 

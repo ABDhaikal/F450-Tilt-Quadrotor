@@ -1,53 +1,53 @@
 //   #include <Arduino.h>
 // #include <Servo.h>
 // #include <../src/Configuration.h>
+// #include <motor.h>
 
-// int incomingByte = 0; // for incoming serial data
 //   void tune()
 //   {
-//   if (PC.available() > 0) {
+//     int incomingByte = 0; // for incoming serial data
+//   if (TELEM.available() > 0) {
+    
 //     // read the incoming byte:
-//     incomingByte = Serial.read();
+//     incomingByte = TELEM.read();
 //    };
 //    if(incomingByte == 'a')
 //    {
-//     pwm1 +=10;
+//     pwms1 +=10;
 //    };
 //    if(incomingByte == 's')
 //    {
-//     pwm2 +=10;
+//     pwms2 +=10;
 //    };
 //    if(incomingByte == 'd')
 //    {
-//     pwm3 +=10;
+//     pwms3 +=10;
 //    };
 //    if(incomingByte == 'f')
 //    {
-//     pwm4 +=10;
+//     pwms4 +=10;
 //    };
 //    if(incomingByte == 'A')
 //    {
-//     pwm1 -=10;
+//     pwms1 -=10;
 //    };
 //    if(incomingByte == 'S')
 //    {
-//     pwm2 -=10;
+//     pwms2 -=10;
 //    };
 //    if(incomingByte == 'D')
 //    {
-//     pwm3 -=10;
+//     pwms3 -=10;
 //    };
 //    if(incomingByte == 'F')
 //    {
-//     pwm4 -=10;
+//     pwms4 -=10;
 //    };
-//   debug();
-//   delay(100);
   
-//   servo1.writeMicroseconds(pwm1);
-//     servo2.writeMicroseconds(pwm2);
-//     servo3.writeMicroseconds(pwm3);
-//     servo4.writeMicroseconds(pwm4);
+//   servo1.writeMicroseconds(pwms1);
+//     servo2.writeMicroseconds(pwms2);
+//     servo3.writeMicroseconds(pwms3);
+//     servo4.writeMicroseconds(pwms4);
 //     incomingByte=0;
 
 //   };

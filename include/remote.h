@@ -10,15 +10,35 @@ bool signal_lost = false;
 int16_t ch_roll, ch_pitch, ch_throttle, ch_yaw;
 bool arming;
 bool alt_hold_mode = false;
+bool lost_state = 0;
+int lost_timeout= 10; //in milisecond
+int lost_timer = 0;
 
-void failsafe() {
-    if (signal_lost) {
-        ch_roll = 1500;
-        ch_pitch = 1500;
-        ch_throttle = 1000;
-        ch_yaw = 1500;
-        arming = false;
+void failsafe() 
+{  
+    if(signal_lost)
+    { 
+        if(lost_state==0)
+        {
+          lost_state = 1; 
+          lost_timer = millis();
+        }
+        if((millis()-lost_timer)>lost_timeout)
+        {
+          PC.println("lost");
+          ch_roll = 1500;
+            ch_pitch = 1500;
+            ch_throttle = 1000;
+            ch_yaw = 1500;
+            arming = false;
+            PC.println("lost");
+        }
     }
+  else
+  {
+    lost_timer = 0;
+    lost_state = 0;
+  }
 }
 
 void remote_setup() {
