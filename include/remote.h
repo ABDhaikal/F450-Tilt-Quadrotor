@@ -11,7 +11,7 @@ int16_t ch_roll, ch_pitch, ch_throttle, ch_yaw;
 bool arming;
 bool alt_hold_mode = false;
 bool lost_state = 0;
-int lost_timeout= 10; //in milisecond
+int lost_timeout= 20; //in milisecond
 int lost_timer = 0;
 
 void failsafe() 
@@ -25,13 +25,17 @@ void failsafe()
         }
         if((millis()-lost_timer)>lost_timeout)
         {
-          PC.println("lost");
-          ch_roll = 1500;
+            #ifdef PC_Debug
+            PC.println("Signal Lost");
+            #endif
+            #ifdef Telem
+            TELEM.println("Signal Lost");
+            #endif
+            ch_roll = 1500;
             ch_pitch = 1500;
             ch_throttle = 1000;
             ch_yaw = 1500;
             arming = false;
-            PC.println("lost");
         }
     }
   else

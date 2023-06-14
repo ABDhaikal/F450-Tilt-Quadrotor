@@ -24,7 +24,7 @@ uint32_t debug_timer = 0;
  * 
  */
 #define tilt
-
+#define integrator
 
 /**
  * @brief Computer Debug
@@ -52,7 +52,7 @@ uint32_t debug_timer = 0;
  * @brief Telemetry monitoring
  * 
  */
-// #define Telem
+#define Telem
 #ifdef Telem
 #define TELEM Serial5
 #define TELEM_Baudrate 57600
@@ -97,3 +97,7 @@ int servo_pwm_max = 2012;
 // measurment 
 float armleght = 0.23; //m
 float mass = 1.76; //kg
+
+#define dmp
+
+#define update_rate 2000 //on milisecond
