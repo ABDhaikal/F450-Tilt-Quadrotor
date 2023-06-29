@@ -18,20 +18,20 @@ void calibrate_motors();
 void motor_setup() {
 
     //set pinmode servo and motor
-    pinMode(motor1_pin, OUTPUT);
-    pinMode(motor2_pin, OUTPUT);
-    pinMode(motor3_pin, OUTPUT);
-    pinMode(motor4_pin, OUTPUT);
+    pinMode(MOTOR_1_PIN, OUTPUT);
+    pinMode(MOTOR_2_PIN, OUTPUT);
+    pinMode(MOTOR_3_PIN, OUTPUT);
+    pinMode(MOTOR_4_PIN, OUTPUT);
     pinMode(servo1_pin, OUTPUT);
     pinMode(servo2_pin, OUTPUT);
     pinMode(servo3_pin, OUTPUT);
     pinMode(servo4_pin, OUTPUT);
 
     //attach servo and motor to pin
-    motor1.attach(motor1_pin);
-    motor2.attach(motor2_pin);
-    motor3.attach(motor3_pin);
-    motor4.attach(motor4_pin);
+    motor1.attach(MOTOR_1_PIN);
+    motor2.attach(MOTOR_2_PIN);
+    motor3.attach(MOTOR_3_PIN);
+    motor4.attach(MOTOR_4_PIN);
     servo1.attach(servo1_pin);
     servo2.attach(servo2_pin);
     servo3.attach(servo3_pin);
@@ -41,21 +41,21 @@ void motor_setup() {
     #endif
     //recenter servo
     servo_loop(1500,1500,1500,1500);
-    motor_loop(motor_pwm_min,motor_pwm_min,motor_pwm_min,motor_pwm_min);
-    #ifdef PC_Debug
+    motor_loop(MOTOR_PWM_MIN,MOTOR_PWM_MIN,MOTOR_PWM_MIN,MOTOR_PWM_MIN);
+    #ifdef USB_DEBUG
     Serial.println("Motor setup complete");
     #endif
-    #ifdef Telem
+    #ifdef TELEM_DEBUG
     TELEM.println("Motor setup complete");
     #endif
     
 }
 
 void motor_loop(int pwm1, int pwm2, int pwm3, int pwm4) {
-    pwm1 = constrain(pwm1, motor_pwm_min, motor_pwm_max);         //Constrain the pulse between 1000 and 2000us.
-    pwm2 = constrain(pwm2, motor_pwm_min, motor_pwm_max);         //Constrain the pulse between 1000 and 2000us.
-    pwm3 = constrain(pwm3, motor_pwm_min, motor_pwm_max);         //Constrain the pulse between 1000 and 2000us.
-    pwm4 = constrain(pwm4, motor_pwm_min, motor_pwm_max);         //Constrain the pulse between 1000 and 2000us.
+    pwm1 = constrain(pwm1, MOTOR_PWM_MIN, MOTOR_PWM_MAX);         //Constrain the pulse between 1000 and 2000us.
+    pwm2 = constrain(pwm2, MOTOR_PWM_MIN, MOTOR_PWM_MAX);         //Constrain the pulse between 1000 and 2000us.
+    pwm3 = constrain(pwm3, MOTOR_PWM_MIN, MOTOR_PWM_MAX);         //Constrain the pulse between 1000 and 2000us.
+    pwm4 = constrain(pwm4, MOTOR_PWM_MIN, MOTOR_PWM_MAX);         //Constrain the pulse between 1000 and 2000us.
     
     motor1.writeMicroseconds(pwm1);
     motor2.writeMicroseconds(pwm2);
@@ -64,10 +64,10 @@ void motor_loop(int pwm1, int pwm2, int pwm3, int pwm4) {
 }
 
 void servo_loop(int pwm1, int pwm2, int pwm3, int pwm4) {
-    pwm1 = constrain(pwm1+servo1_offset, servo_pwm_min, servo_pwm_max);         //Constrain the pulse between 988 and 2012us.
-    pwm2 = constrain(pwm2+servo2_offset, servo_pwm_min, servo_pwm_max);         //Constrain the pulse between 988 and 2012us.
-    pwm3 = constrain(pwm3+servo3_offset, servo_pwm_min, servo_pwm_max);         //Constrain the pulse between 988 and 2012us.
-    pwm4 = constrain(pwm4+servo4_offset, servo_pwm_min, servo_pwm_max);         //Constrain the pulse between 988 and 2012us.
+    pwm1 = constrain(pwm1+servo1_offset, SERVO_PWM_MIN, SERVO_PWM_MAX);         //Constrain the pulse between 988 and 2012us.
+    pwm2 = constrain(pwm2+servo2_offset, SERVO_PWM_MIN, SERVO_PWM_MAX);         //Constrain the pulse between 988 and 2012us.
+    pwm3 = constrain(pwm3+servo3_offset, SERVO_PWM_MIN, SERVO_PWM_MAX);         //Constrain the pulse between 988 and 2012us.
+    pwm4 = constrain(pwm4+servo4_offset, SERVO_PWM_MIN, SERVO_PWM_MAX);         //Constrain the pulse between 988 and 2012us.
     
     servo1.writeMicroseconds(pwm1);
     servo2.writeMicroseconds(pwm2);
@@ -77,9 +77,9 @@ void servo_loop(int pwm1, int pwm2, int pwm3, int pwm4) {
 
 void calibrate_motors() {
     Serial.println("Calibrating motors...");
-    motor_loop(motor_pwm_max, motor_pwm_max, motor_pwm_max, motor_pwm_max); 
+    motor_loop(MOTOR_PWM_MAX, MOTOR_PWM_MAX, MOTOR_PWM_MAX, MOTOR_PWM_MAX); 
     delay(1000);
-    motor_loop(motor_pwm_min, motor_pwm_min, motor_pwm_min, motor_pwm_min);
+    motor_loop(MOTOR_PWM_MIN, MOTOR_PWM_MIN, MOTOR_PWM_MIN, MOTOR_PWM_MIN);
     delay(1000);
     Serial.println("Calibration complete");
 }

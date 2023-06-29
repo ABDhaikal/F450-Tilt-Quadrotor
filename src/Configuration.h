@@ -16,24 +16,30 @@
  */
 uint32_t loop_timer = 0;
 uint32_t debug_timer = 0;
-
+#define UPDATE_RATE 2000 //on microsecond
 
 
 /**
- * @brief 
+ * @brief type of quadrotor
  * 
  */
-#define tilt
-#define integrator
+#define TILT_QUADROTOR
+
+/**************** COMUNICATION CONFIGURATION ****************/
 
 /**
  * @brief Computer Debug
  * 
  */
-#define PC_Debug //computer debugging
-#ifdef PC_Debug
-#define PC Serial
-#define PC_Baudrate 115200
+#define USB_DEBUG //computer debuggings
+#ifdef USB_DEBUG
+#define USB Serial
+#define USB_BAUDRATE 57600
+#define USBPRINT(x) USB.print(x)
+#define USBPRINTLN(x) USB.println(x)
+#define USBENDL USB.println()
+#define USBPRINTTAB USB.print(" ")
+#define USBPRINT2(x,y) USB.print(x);USB.print(y)
 #endif
 
 /**
@@ -44,7 +50,7 @@ uint32_t debug_timer = 0;
 #ifdef GPS_
     #include <TinyGPSPlus.h>
     #define GPS Serial3
-    #define GPS_Bautrate 9600
+    #define GPS_BAUDRATE 9600
     TinyGPSPlus gps;
 #endif
 
@@ -52,52 +58,118 @@ uint32_t debug_timer = 0;
  * @brief Telemetry monitoring
  * 
  */
-#define Telem
-#ifdef Telem
-#define TELEM Serial5
-#define TELEM_Baudrate 57600
+#define TELEM_DEBUG
+#ifdef TELEM_DEBUG
+#define TELEM Serial3
+#define TELEM_BAUDRATE 57600
+#define TELEM_PRINT(x) TELEM.print(x)
+#define TELEM_PRINTLN(x) TELEM.println(x)
+#define TELEM_ENDL TELEM.println()
+#define TELEM_PRINTTAB TELEM.print(" ")
+#define TELEM_PRINT2(x,y) TELEM.print(x);TELEM.print(y)
 #endif
 
+#ifdef USB_DEBUG&&TELEM_DEBUG
+#define DEBUG(x) TELEM.print(x);USB.print(x)
+#define DEBUGLN(x) TELEM.println(x);USB.println(x)
+#define DEBUGENDL TELEM.println();USB.println()
+#define DEBUGTAB TELEM.print(" ");USB.print(" ")
+#define DEBUG2(x,y) TELEM.print(x);TELEM.print(y);USB.print(x);USB.print(y)
+#else
+#ifdef TELEM_DEBUG &! USB_DEBUG
+#define DEBUG(x) USB.print(x)
+#define DEBUGLN(x) USB.println(x)
+#define DEBUGENDL USB.println()
+#define DEBUGTAB USB.print(" ")
+#define DEBUG2(x,y) USB.print(x);USB.print(y)
+#else
+#ifdef USB_DEBUG&!TELEM_DEBUG
+#define DEBUG(x) TELEM.print(x)
+#define DEBUGLN(x) TELEM.println(x)
+#define DEBUGENDL TELEM.println()
+#define DEBUGTAB TELEM.print(" ")
+#define DEBUG2(x,y) TELEM.print(x);TELEM.print(y)
+#endif
+#endif
+#endif
+
+
+
+/**************** ACTUATOR CONFIGURATION ****************/
 /**
- * @brief quad motor
+ * @brief brushless motor
  *  
  */
 // #define Calibrate_motor
 
-int motor1_pin = 0;
-int motor2_pin = 2;
-int motor3_pin = 4;
-int motor4_pin = 6;
-int motor_pwm_min = 988;
-int motor_pwm_max = 2012;
+#define MOTOR_1_PIN  0
+#define MOTOR_2_PIN  2
+#define MOTOR_3_PIN  4
+#define MOTOR_4_PIN  6
+#define MOTOR_PWM_MIN  988
+#define MOTOR_PWM_MAX  2012
 
 /**
  * @brief motor servo 
  * 
  */
-int servo1_pin = 1;
-int servo2_pin = 3;
-int servo3_pin = 9;
-int servo4_pin = 5;
-int servo1_offset = 70;
-int servo2_offset = 60;
-int servo3_offset = -10;
-int servo4_offset = -10;
 
-int servo_pwm_min = 988;
-int servo_pwm_max = 2012;
+#define servo1_pin  1
+#define servo2_pin  3
+#define servo3_pin  9
+#define servo4_pin  5
+
+#define servo1_offset  70
+#define servo2_offset  60
+#define servo3_offset  -10
+#define servo4_offset  -10
+
+#define SERVO_PWM_MIN  988
+#define SERVO_PWM_MAX  2012
 
 
-//for tunning servos
-// int pwms1 = 1500;
-// int pwms2 = 1500;
-// int pwms3 = 1500;
-// int pwms4 = 1500;
 
-// measurment 
-float armleght = 0.23; //m
-float mass = 1.76; //kg
+/**************** MEASUREMENT CONFIGURATION ****************/ 
 
+/**
+ * @brief typical quadrotor
+ * 
+ */
+#define ARM_LEGHT 0.23 //m
+#define VEHICLE_MASS 1.7 //kg
+
+/**
+ * @brief INERTIAL SENSOR CONFIGURATION
+ * 
+ */
 #define dmp
+#ifdef dmp
+#define DMP_INTERRUPT_PIN 22 
+#else 
+#define LPF_ACCEL
 
-#define update_rate 2000 //on milisecond
+#ifdef LPF_ACCEL
+    float DEFAULT_ACCEL_FILTER_FREQ =25;
+    float DEFAULT_ACCEL_FILTER_SAMPLE_FREQ =1000000.0f/UPDATE_RATE;
+#endif
+#define LPF_GYRO
+#ifdef LPF_GYRO
+    float DEFAULT_GYRO_FILTER_FREQ =25;
+    float DEFAULT_GYRO_FILTER_SAMPLE_FREQ =1000000.0f/UPDATE_RATE;
+#endif
+#endif 
+
+// #define kalman_imu
+#define SCALE_FACTOR_GYRO 16.4
+#define SCALE_FACTOR_ACCEL 16384
+#define dmp_update_boost // upgrade data from imu when use dmp to get higher update rate
+#define calibrate_imu
+
+
+/**************** CONTROL CONFIGURATION ****************/ 
+#define CONTROL_INTEGRATOR
+float LIMIT_ROLL=10;
+float LIMIT_PITCH=10; 
+
+float roll_ref_off=0;
+float pitch_ref_off=2;

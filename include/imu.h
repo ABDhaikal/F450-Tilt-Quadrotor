@@ -4,27 +4,27 @@
 #include <MPU6050_6Axis_MotionApps20.h>
 #include "Configuration.h"
 
+// inertial parameter
+float euler[3];         // [psi, theta, phi]    Euler angle container
+float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+float roll = 0;
+float pitch = 0;
+float yaw = 0;
+float roll_rate = 0;
+float pitch_rate = 0;
+float yaw_rate = 0;
+float offset_gyro_roll =0;
+float yaw_offset = 0;
 
-MPU6050 raw;
-float accelX, accelY, accelZ, gyroX, gyroY=0, gyroZ;
-float accelAngleX, accelAngleY, accelAngleZ;
-float gyroAngleX=0,gyroAngleY=0,gyroAngleZ=0;
-int16_t ax, ay, az, gx, gy, gz;
-float roll_comple = 0;
-float pitch_comple = 0;
-float yaw_comple = 0;
-float roll_rate_comple = 0;
-float pitch_rate_comple = 0;
-float yaw_rate_comple = 0;
-float scaleFactorGyro = 16.4;
+// for raw data
+#define SCALE_FACTOR_GYRO 16.375
+float raw_gyro_x;
+float raw_gyro_y;
+float raw_gyro_z;
+int16_t gx,gy,gz,ax,ay,az;
 
 #ifdef dmp
 MPU6050 mpu;
-
-
-#define INTERRUPT_PIN 22  // use pin 2 on Arduino Uno & most boards
-#define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
-bool blinkState = false;
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -42,169 +42,193 @@ VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measur
 VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
 VectorFloat gravity;    // [x, y, z]            gravity vector
 VectorInt16 gyro;    // [x, y, z]            gyro
-int32_t gyro32[3];
+
+volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
+void dmpDataReady() 
+{
+    mpuInterrupt = true;
+}
+
+
+#ifdef dmp_update_boost
+int loop_validator = 5;
+int loop_validator_count = 0;
+bool dmp_on_update = false;
+float last_roll = 0;
+float last_pitch = 0;
+float last_yaw = 0;
+float diff_roll = 0;
+float diff_pitch =0;
+float diff_yaw = 0;
+
+float last_roll_rate = 0;
+float last_pitch_rate = 0;
+float last_yaw_rate = 0;
+float diff_roll_rate = 0;
+float diff_pitch_rate =0;
+float diff_yaw_rate = 0;
+#endif
 
 #endif
 
-float euler[3];         // [psi, theta, phi]    Euler angle container
-float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
-float roll = 0;
-float pitch = 0;
-float yaw = 0;
-uint32_t roll_rate = 0;
-float pitch_rate = 0;
-float yaw_rate = 0;
-float offset_gyro_roll =0;
+
+
 
 // kalman filter
-float kalman_K = 0;
-float kalman_A = 1;
-float kalman_C = 1;
-float kalman_P = 0;
-float kalman_Q = 0.0001;
-float kalman_R = 0.2;
-float x_hat = 0;
-
-// validator
-int loop_validator = 4;
-int loop_validator_count = 0;
-
+#ifdef kalman_imu
+	float kalman_K [3];
+	float kalman_A [3] = {1,1,1};
+	float kalman_C [3] = {0.8,1,1};
+	float kalman_P [3];
+	float kalman_Q [3] ={0.01,1,0.1};
+	float kalman_R [3] ={2,1,1};
+	float kalman_out[3];
+	float kalman_in[3];
+#endif
 
 
-
-
-
-volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
-void dmpDataReady() {
-    mpuInterrupt = true;
-}
 
 void imu_loop() ;
 
 void imu_setup() {
     Wire.begin();
     Wire.setClock(400000); // 400 kHz I2C clock.
-	raw.initialize();
-	raw.setXGyroOffset(6);
-	raw.setYGyroOffset(198);
-	raw.setZGyroOffset(-12);
-	raw.setXAccelOffset(-1178);
-	raw.setYAccelOffset(-1000);
-	raw.setZAccelOffset(1863);
-	raw.setRate(2);
 
 	#ifdef dmp
 	mpu.initialize();
-	pinMode(INTERRUPT_PIN, INPUT);
+	pinMode(DMP_INTERRUPT_PIN, INPUT);
 
 	devStatus = mpu.dmpInitialize();
-	mpu.setXGyroOffset(9);
-	mpu.setYGyroOffset(201);
-	mpu.setZGyroOffset(-6);
-	mpu.setXAccelOffset(-1134);
-	mpu.setYAccelOffset(-1044);
-	mpu.setZAccelOffset(1866);
+	mpu.setXGyroOffset(4);
+	mpu.setYGyroOffset(202);
+	mpu.setZGyroOffset(-19);
+	mpu.setXAccelOffset(-1147);
+	mpu.setYAccelOffset(-1038);
+	mpu.setZAccelOffset(1831);
 
 	
 	if (devStatus == 0) {
 		mpu.setDMPEnabled(true);
 
-		attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+		attachInterrupt(digitalPinToInterrupt(DMP_INTERRUPT_PIN), dmpDataReady, RISING);
 		mpuIntStatus = mpu.getIntStatus();
 
 		dmpReady = true;
 
 		packetSize = mpu.dmpGetFIFOPacketSize();
 	} else {
-		#ifdef PC_Debug
+		#ifdef USB_DEBUG
 		Serial.print("DMP Initialization failed ");
 		Serial.print(devStatus);
 		Serial.println("");
 		#endif
 	}
-	#endif
-	int i = 0;
-	while(i<1000) {
-		raw.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-		i++;
-		offset_gyro_roll += (float)gy/scaleFactorGyro;
-		delay(2);
-	}
-	offset_gyro_roll = offset_gyro_roll/1000;
-	imu_loop();
-	delay(5);
-	gyroAngleX = roll;
-}
 
+	#ifdef calibrate_imu
+	mpu.CalibrateAccel(100);
+    mpu.CalibrateGyro(100);
+    mpu.PrintActiveOffsets();
+	#endif
+
+	#endif
+}
+void yaw_offset_funtion();
 void imu_loop() {
 	#ifdef dmp
-	loop_validator_count++;
-	if (!dmpReady) return;
-
-
-	 if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer))
-	 {
-		loop_validator_count =0;
-		mpu.dmpGetQuaternion(&q, fifoBuffer);
-		mpu.dmpGetGravity(&gravity, &q);
-		mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-
-		// get roll pitch yaw
-		yaw = ypr[0] * RAD_TO_DEG;
-		roll = -ypr[1] * RAD_TO_DEG;
-		pitch = ypr[2] * RAD_TO_DEG;
-
-		// mpu.dmpGetAccel(&aa, fifoBuffer);
-        // mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-		// mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q); 
-		
-		mpu.dmpGetGyro(gyro32,fifoBuffer);
-
-		roll_rate 	= gyro32[1];
-  		yaw_rate 	= -gyro32[2];
-  		pitch_rate 	=  gyro32[0];
-
-	 }
-	 	#endif
-
-		raw.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-		roll_rate_comple = (gy /scaleFactorGyro)+offset_gyro_roll;
-		pitch_rate_comple = gx / scaleFactorGyro;
-		yaw_rate_comple = -gz / scaleFactorGyro;
-
-		//add kalman filter
-		double x_pred = kalman_A * x_hat;
-        double P_pred = kalman_A * kalman_P * kalman_A + kalman_Q;
-
-        // Calculate the Kalman gain
-        kalman_K = P_pred * kalman_C / (kalman_C * P_pred * kalman_C + kalman_R);
-
-        // Update the state estimate
-        x_hat = x_pred + kalman_K * (roll_rate_comple - kalman_C * x_pred);
-
-        // Update the error covariance
-        kalman_P = (1 - kalman_K * kalman_C) * P_pred;
-
-
-		if(x_hat>0.05||x_hat<-0.05)
+		if (!dmpReady)return;
+		if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer))
 		{
-			gyroAngleX = gyroAngleX + (x_hat  * update_rate/1000000);
-		}
-		
- 		gyroAngleY = gyroAngleY + (pitch_rate_comple * update_rate/1000000);
-		gyroAngleZ = gyroAngleZ + (yaw_rate_comple   * update_rate/1000000);
-		accelAngleY = (atan(ay / sqrt(pow(ax, 2) + pow(az, 2))) * 180 / PI); // AccErrorX ~(0.58) See the calculate_IMU_error()custom function for more details
-  		accelAngleX = (atan(-1 * ax / sqrt(pow(ay, 2) + pow(az, 2))) * 180 / PI); // AccErrorY ~(-1.5\
-		
-		 // Complementary filter - combine acceleromter and gyro angle values
- 		roll_comple = 0.96 * gyroAngleX + 0.04 * accelAngleX;
- 		pitch_comple = 0.96 * gyroAngleY + 0.04 * accelAngleY;
-		yaw_comple =  yaw_comple + gyroAngleZ ;
-		// gyroAngleX = roll_comple;
-		// gyroAngleX = 0.1*gyroAngleX+0.9*roll;
-		// if(loop_validator_count>loop_validator){
-		// 	loop_validator_count = 0;
-		// 	gyroAngleX = 0.8*roll+0.2*gyroAngleX;
-		// }
+			mpu.dmpGetQuaternion(&q, fifoBuffer);
+			mpu.dmpGetGravity(&gravity, &q);
+			mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+			// get roll pitch yaw
+			yaw = ypr[0] * RAD_TO_DEG;
+			roll = -ypr[1] * RAD_TO_DEG ;
+			pitch = ypr[2] * RAD_TO_DEG ;
+			mpu.dmpGetAccel(&aa, fifoBuffer);
+    		mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+			mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q); 
+			mpu.dmpGetGyro(&gyro,fifoBuffer);
+			roll_rate 	=  gyro.y;
+  			yaw_rate 	= -gyro.z;
+  			pitch_rate 	=  gyro.x;
+			if(roll_rate==-1)
+			{
+				roll_rate=0;
+			}
+			if(yaw_rate==-1)
+			{
+				yaw_rate=0;
+			}
+			if(pitch_rate==-1)
+			{
+				pitch_rate=0;
+			}
+			#ifdef dmp_update_boost
+			dmp_on_update = true;
+			loop_validator_count =0;
+			diff_roll = roll-last_roll;
+			diff_pitch	= pitch-last_pitch;
+			diff_yaw = yaw-last_yaw;
+			last_roll = roll;
+			last_pitch = pitch;
+			last_yaw = yaw;
 
+			diff_roll_rate = roll_rate-last_roll_rate;
+			diff_pitch_rate	= pitch_rate-last_pitch_rate;
+			diff_yaw_rate = yaw_rate-last_yaw_rate;
+			last_roll_rate = roll_rate;
+			last_pitch_rate = pitch_rate;
+			last_yaw_rate = yaw_rate;
+			#endif
+		}
+		#ifdef dmp_update_boost
+		if(loop_validator_count!=0)
+		{
+			dmp_on_update = false;
+			roll_rate = roll_rate + diff_roll_rate/loop_validator;
+			pitch_rate = pitch_rate + diff_pitch_rate/loop_validator;
+			yaw_rate = yaw_rate + diff_yaw_rate/loop_validator;
+			roll = roll + diff_roll/loop_validator;
+			pitch = pitch + diff_pitch/loop_validator;
+			yaw = yaw + diff_yaw/loop_validator;
+		}
+		loop_validator_count++;
+		#endif
+	#endif
+
+	#ifdef kalman_imu
+		//add kalman filter
+		kalman_in[0] = roll_rate;
+		kalman_in[1] = pitch_rate;
+		kalman_in[2] = yaw_rate;
+		for(int i = 0; i<3; i++)
+		{
+			double x_pred = kalman_A[i] * kalman_out[i];
+        	double P_pred = kalman_A[i] * kalman_P[i] * kalman_A[i] + kalman_Q[i];
+
+        	// Calculate the Kalman gain
+        	kalman_K[i] = P_pred * kalman_C[i] / (kalman_C[i] * P_pred * kalman_C[i] + kalman_R[i]);
+
+        	// Update the state estimate
+        	kalman_out[i] = x_pred + kalman_K[i] * (kalman_in[i] - kalman_C[i] * x_pred);
+
+        	// Update the error covariance
+        	kalman_P[i] = (1 - kalman_K[i] * kalman_C[i]) * P_pred;
+		}
+	#endif
+		yaw_offset_funtion();
+}
+void yaw_offset_funtion()
+{
+ 	yaw = yaw +180+yaw_offset;
+	if(yaw<0)
+	{
+		yaw = yaw + 360;
+	}
+	if(yaw>360)
+	{
+		yaw = yaw - 360;
+	}
+	yaw = yaw - 180;
 }

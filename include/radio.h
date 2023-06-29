@@ -11,7 +11,7 @@ int16_t ch_roll, ch_pitch, ch_throttle, ch_yaw;
 bool arming;
 bool alt_hold_mode = false;
 bool lost_state = 0;
-int lost_timeout= 20; //in milisecond
+int lost_timeout= 50; //in milisecond
 int lost_timer = 0;
 
 void failsafe() 
@@ -25,10 +25,10 @@ void failsafe()
         }
         if((millis()-lost_timer)>lost_timeout)
         {
-            #ifdef PC_Debug
-            PC.println("Signal Lost");
+            #ifdef USB_DEBUG
+            USB.println("Signal Lost");
             #endif
-            #ifdef Telem
+            #ifdef TELEM_DEBUG
             TELEM.println("Signal Lost");
             #endif
             ch_roll = 1500;
@@ -45,7 +45,7 @@ void failsafe()
   }
 }
 
-void remote_setup() {
+void radio_setup() {
     sbus_rx.Begin();
 
     if (sbus_rx.Read()) {
@@ -76,7 +76,7 @@ void remote_setup() {
     }
 }
 
-void remote_loop() {
+void radio_loop() {
   if (sbus_rx.Read()) {
     data = sbus_rx.data();
 
@@ -85,10 +85,10 @@ void remote_loop() {
     ch_throttle = data.ch[2] * 0.615f + 890;
     ch_yaw = data.ch[3] * 0.615f + 890;
 
-    ch_roll = constrain(ch_roll, motor_pwm_min, motor_pwm_max);
-    ch_pitch = constrain(ch_pitch, motor_pwm_min, motor_pwm_max);
-    ch_throttle = constrain(ch_throttle, motor_pwm_min, motor_pwm_max);
-    ch_yaw = constrain(ch_yaw, motor_pwm_min, motor_pwm_max);
+    ch_roll = constrain(ch_roll, MOTOR_PWM_MIN, MOTOR_PWM_MAX);
+    ch_pitch = constrain(ch_pitch, MOTOR_PWM_MIN, MOTOR_PWM_MAX);
+    ch_throttle = constrain(ch_throttle, MOTOR_PWM_MIN, MOTOR_PWM_MAX);
+    ch_yaw = constrain(ch_yaw, MOTOR_PWM_MIN, MOTOR_PWM_MAX);
 
     arming = data.ch[4] > 1500 ? true : false;
     alt_hold_mode = data.ch[5] > 1500 ? true : false;
