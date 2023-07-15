@@ -3,24 +3,20 @@
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
 #include "Configuration.h"
+#include "parameter.h"
 
 // inertial parameter
 float euler[3];         // [psi, theta, phi]    Euler angle container
-float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
-float roll = 0;
-float pitch = 0;
-float yaw = 0;
-float roll_rate = 0;
-float pitch_rate = 0;
-float yaw_rate = 0;
-float offset_gyro_roll =0;
-float yaw_offset = 0;
+float ypr[3];           // yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+
 
 // for raw data
-#define SCALE_FACTOR_GYRO 16.375
 float raw_gyro_x;
 float raw_gyro_y;
 float raw_gyro_z;
+float raw_accel_x;
+float raw_accel_y;
+float raw_accel_z;
 int16_t gx,gy,gz,ax,ay,az;
 
 #ifdef dmp
@@ -51,7 +47,7 @@ void dmpDataReady()
 
 
 #ifdef dmp_update_boost
-int loop_validator = 5;
+int loop_validator = 6;
 int loop_validator_count = 0;
 bool dmp_on_update = false;
 float last_roll = 0;
@@ -67,6 +63,11 @@ float last_yaw_rate = 0;
 float diff_roll_rate = 0;
 float diff_pitch_rate =0;
 float diff_yaw_rate = 0;
+float last_diff_roll_rate = 0;
+float last_diff_pitch_rate =0;
+float last_diff_yaw_rate = 0;
+
+
 #endif
 
 #endif
@@ -108,6 +109,11 @@ void imu_setup() {
 
 	
 	if (devStatus == 0) {
+		#ifdef calibrate_imu
+		mpu.CalibrateAccel(100);
+    	mpu.CalibrateGyro(100);
+    	mpu.PrintActiveOffsets();
+		#endif
 		mpu.setDMPEnabled(true);
 
 		attachInterrupt(digitalPinToInterrupt(DMP_INTERRUPT_PIN), dmpDataReady, RISING);
@@ -124,16 +130,13 @@ void imu_setup() {
 		#endif
 	}
 
-	#ifdef calibrate_imu
-	mpu.CalibrateAccel(100);
-    mpu.CalibrateGyro(100);
-    mpu.PrintActiveOffsets();
-	#endif
+	
 
 	#endif
 }
-void yaw_offset_funtion();
-void imu_loop() {
+
+
+void imu_loop(attitude_parameter *_attitude) {
 	#ifdef dmp
 		if (!dmpReady)return;
 		if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer))
@@ -141,57 +144,57 @@ void imu_loop() {
 			mpu.dmpGetQuaternion(&q, fifoBuffer);
 			mpu.dmpGetGravity(&gravity, &q);
 			mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-			// get roll pitch yaw
-			yaw = ypr[0] * RAD_TO_DEG;
-			roll = -ypr[1] * RAD_TO_DEG ;
-			pitch = ypr[2] * RAD_TO_DEG ;
+			// get roll roll yaw
+			_attitude->yaw = ypr[0] * RAD_TO_DEG;
+			_attitude->roll = -ypr[1] * RAD_TO_DEG ;
+			_attitude->pitch = ypr[2] * RAD_TO_DEG ;
 			mpu.dmpGetAccel(&aa, fifoBuffer);
     		mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
 			mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q); 
 			mpu.dmpGetGyro(&gyro,fifoBuffer);
-			roll_rate 	=  gyro.y;
-  			yaw_rate 	= -gyro.z;
-  			pitch_rate 	=  gyro.x;
-			if(roll_rate==-1)
+			_attitude->roll_rate 	=  gyro.y;
+  			_attitude->yaw_rate 	= -gyro.z;
+  			_attitude->pitch_rate 	=  gyro.x;
+			if(_attitude->roll_rate==-1)
 			{
-				roll_rate=0;
+				_attitude->roll_rate=0;
 			}
-			if(yaw_rate==-1)
+			if(_attitude->yaw_rate==1)
 			{
-				yaw_rate=0;
+				_attitude->yaw_rate=0;
 			}
-			if(pitch_rate==-1)
+			if(_attitude->pitch_rate==-1)
 			{
-				pitch_rate=0;
+				_attitude->pitch_rate=0;
 			}
 			#ifdef dmp_update_boost
 			dmp_on_update = true;
 			loop_validator_count =0;
-			diff_roll = roll-last_roll;
-			diff_pitch	= pitch-last_pitch;
-			diff_yaw = yaw-last_yaw;
-			last_roll = roll;
-			last_pitch = pitch;
-			last_yaw = yaw;
-
-			diff_roll_rate = roll_rate-last_roll_rate;
-			diff_pitch_rate	= pitch_rate-last_pitch_rate;
-			diff_yaw_rate = yaw_rate-last_yaw_rate;
-			last_roll_rate = roll_rate;
-			last_pitch_rate = pitch_rate;
-			last_yaw_rate = yaw_rate;
+			diff_roll = _attitude->roll-last_roll;
+			diff_pitch	= _attitude->pitch-last_pitch;
+			diff_yaw = _attitude->yaw-last_yaw;
+			last_roll = _attitude->roll;
+			last_pitch = _attitude->pitch;
+			last_yaw = _attitude->yaw;
+			
+			diff_roll_rate = _attitude->roll_rate-last_roll_rate;
+			diff_pitch_rate	= _attitude->pitch_rate-last_pitch_rate;
+			diff_yaw_rate = _attitude->yaw_rate-last_yaw_rate;
+			last_roll_rate = _attitude->roll_rate;
+			last_pitch_rate = _attitude->pitch_rate;
+			last_yaw_rate = _attitude->yaw_rate;
 			#endif
 		}
 		#ifdef dmp_update_boost
 		if(loop_validator_count!=0)
 		{
 			dmp_on_update = false;
-			roll_rate = roll_rate + diff_roll_rate/loop_validator;
-			pitch_rate = pitch_rate + diff_pitch_rate/loop_validator;
-			yaw_rate = yaw_rate + diff_yaw_rate/loop_validator;
-			roll = roll + diff_roll/loop_validator;
-			pitch = pitch + diff_pitch/loop_validator;
-			yaw = yaw + diff_yaw/loop_validator;
+			_attitude->roll_rate += diff_roll_rate/loop_validator;
+			_attitude->pitch_rate += diff_pitch_rate/loop_validator;
+			_attitude->yaw_rate +=   diff_yaw_rate/loop_validator;
+			_attitude->roll += diff_roll/loop_validator;
+			_attitude->pitch += diff_pitch/loop_validator;
+			_attitude->yaw += _attitude->yaw + diff_yaw/loop_validator;
 		}
 		loop_validator_count++;
 		#endif
@@ -199,9 +202,9 @@ void imu_loop() {
 
 	#ifdef kalman_imu
 		//add kalman filter
-		kalman_in[0] = roll_rate;
-		kalman_in[1] = pitch_rate;
-		kalman_in[2] = yaw_rate;
+		kalman_in[0] = _attitude->roll_rate;
+		kalman_in[1] = _attitude->pitch_rate;
+		kalman_in[2] = _attitude->yaw_rate;
 		for(int i = 0; i<3; i++)
 		{
 			double x_pred = kalman_A[i] * kalman_out[i];
@@ -217,18 +220,22 @@ void imu_loop() {
         	kalman_P[i] = (1 - kalman_K[i] * kalman_C[i]) * P_pred;
 		}
 	#endif
-		yaw_offset_funtion();
-}
-void yaw_offset_funtion()
-{
- 	yaw = yaw +180+yaw_offset;
-	if(yaw<0)
+	mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    raw_gyro_x  =  ((float)gy)/SCALE_FACTOR_GYRO;
+	raw_gyro_y  =  ((float)gx)/SCALE_FACTOR_GYRO;
+	raw_gyro_z  =  ((float)-gz)/SCALE_FACTOR_GYRO;
+    raw_accel_x = ax;
+    raw_accel_y = ay;
+    raw_accel_z = az;
+
+	_attitude->yaw = _attitude->yaw +180+yaw_offset;
+	if(_attitude->yaw<0)
 	{
-		yaw = yaw + 360;
+		_attitude->yaw = _attitude->yaw + 360;
 	}
-	if(yaw>360)
+	if(_attitude->yaw>360)
 	{
-		yaw = yaw - 360;
+		_attitude->yaw = _attitude->yaw - 360;
 	}
-	yaw = yaw - 180;
+	_attitude->yaw = _attitude->yaw - 180;
 }

@@ -4,7 +4,6 @@
 #include <MPU6050.h>
 #include "Configuration.h"
 #include "parameter.h"
-#include "EKF.h"
 
 #ifdef SCALE_FACTOR_ACCEL
 #undef SCALE_FACTOR_ACCEL 
@@ -61,7 +60,8 @@ float kalman_yaw_uncertainty;
 float GyroUncertainty=4; //can get value from standard deviation of raw data 
 float AccelUncertainty=3;//can get value from standard deviation of raw data 
 void KalmanUpdate();
-void applyKalman(float &KalmanState, float &KalmanUncertainty, float KalmanInput, float KalmanMeasurement);
+void applyKalman(float &KalmanState, float &KalmanUncertainty, float KalmanInput, float KalmanMeasurement
+                ,float inputUncertainty,float MeasurementUncertainty);
 #endif
 
 #ifdef MADGWICK_IMU
@@ -82,7 +82,7 @@ int offset_gyro_pitch =0;
 int offset_gyro_yaw =0;
 float offset_accel_x =-265;
 float offset_accel_y =-51;
-float offset_accel_z =40;
+float offset_accel_z =-50;
 // float offset_accel_x =-263;
 // float offset_accel_y =-48;
 // float offset_accel_z =25;
@@ -109,12 +109,10 @@ float yaw = 0;
 float roll_rate = 0;
 float pitch_rate = 0;
 float yaw_rate = 0;
-float accel_x=0;
-float accel_y=0;
-float accel_z=0;
-float lin_accel_x=0;
-float lin_accel_y=0;
-float lin_accel_z=0;
+VectorFloat accel;
+VectorFloat gravity;
+VectorFloat lin_accel;
+VectorFloat world_accel;
 float velocity_x=0;
 float velocity_y=0;
 float velocity_z=0;
@@ -130,6 +128,9 @@ float ekf_ax;
 float ekf_ay;
 float ekf_az;
 
+float kalman_roll;
+float kalman_pitch;
+
 
 #ifdef USE_BYPASS_IMU
 #include "Compass.h"
@@ -137,6 +138,14 @@ Compass mag;
 float mag_heading;
 void init_mag();
 void calucalte_mag_heading();
+float mag_offset_x=77.200594;
+float mag_offset_y=-147.628290;
+float mag_offset_z=-35.250081;
+float mag_scale[3][3]={
+    {0.929955,0.001777,-0.004077},
+    {0.001777,0.913090,0.010228},
+    {-0.004077,0.010228,1.142049}
+};
 #endif
 
 
@@ -148,7 +157,9 @@ void imu_loop(attitude_parameter *data);
 void YawOffsetFuntion();
 void GetRawData();
 void ScaleIMUData();
-void LinearAcceleration();
+void CalculateGravity();
+void CalculateLinearAcceleration();
+void CalculateWorldAcceleration();
 void getoffsetaccel();
 void velocityCalculation();
 
@@ -166,17 +177,18 @@ void imu_setup()
     mpu.setMemoryBank(0x10, true, true);
 	mpu.setMemoryStartAddress(0x06);
     mpu.setMemoryBank(0, false, false);
-    mpu.setRate(0);
-    mpu.setClockSource(MPU6050_CLOCK_PLL_ZGYRO);
+    mpu.setClockSource(MPU6050_CLOCK_PLL_XGYRO);
+    mpu.setRate(1);
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_8); 
-    mpu.setDLPFMode(MPU6050_DLPF_BW_5);
+    // mpu.setDLPFMode(MPU6050_DLPF_BW_42);
     mpu.setFIFOEnabled(true);
     mpu.resetFIFO();
     mpu.setI2CMasterModeEnabled(false);
-    mpu.setI2CBypassEnabled(true);
+    
 
     #ifdef USE_BYPASS_IMU
+    mpu.setI2CBypassEnabled(true);
     init_mag();
     #endif
 	pinMode(DMP_INTERRUPT_PIN, INPUT);
@@ -198,13 +210,13 @@ void imu_setup()
     #endif
 
     #ifdef MADGWICK_IMU
-    _madgwick.begin(1/UPDATE_RATE_S);
+    _madgwick.begin(500);
     #endif
 
-    for(int i=0;i<10000;i++)
-    {
-    imu_loop();
-    }
+    // for(int i=0;i<10000;i++)
+    // {
+    // imu_loop();
+    // }
     velocity_x=0;
     velocity_y=0;
     velocity_z=0;
@@ -226,9 +238,9 @@ void imu_loop() {
     LPF_Update();
     #endif
 
-    gyro_roll += raw_gyro_x*0.002/SCALE_FACTOR_GYRO;
-    gyro_pitch += raw_gyro_y*0.002/SCALE_FACTOR_GYRO;
-    gyro_yaw += raw_gyro_z*0.002/SCALE_FACTOR_GYRO;
+    gyro_roll += roll_rate*0.002/SCALE_FACTOR_GYRO;
+    gyro_pitch += pitch_rate*0.002/SCALE_FACTOR_GYRO;
+    gyro_yaw += yaw_rate*0.002/SCALE_FACTOR_GYRO;
     
 
     ScaleIMUData();
@@ -238,7 +250,9 @@ void imu_loop() {
     #ifdef MADGWICK_IMU
     MadgwickUpdate();
     #endif
-    LinearAcceleration();
+    CalculateGravity();
+    CalculateLinearAcceleration();
+    CalculateWorldAcceleration();
     velocityCalculation();
 	YawOffsetFuntion();
 }
@@ -257,10 +271,10 @@ void GetRawData()
     az = (az- offset_accel_z);
     // raw_accel_x = 0.993785*ax+0.005884*ay-0.000562*az;
     // raw_accel_y = 0.005884*ax+1.001000*ay+0.001827*az;
-    // raw_accel_z = -0.000562*ax+0.001827*ay+0.993785*az;
-    raw_accel_x = 0.99380226*ax;
-    raw_accel_y = 1.001018961*ay;
-    raw_accel_z = 0.996990516*az;
+    // raw_accel_z = -0.000562*ax+0.001827*ay+0.996989*az;
+    raw_accel_x = (int)(0.993785*ax);
+    raw_accel_y = (int)(1.001000*ay);
+    raw_accel_z = (int)(0.99609375*az);
     }
     else
     {
@@ -271,14 +285,22 @@ void GetRawData()
     raw_accel_y = ay;
     raw_accel_z = az;
     }
-    roll_rate   = raw_gyro_x  ;
-    pitch_rate  = raw_gyro_y  ;
-    yaw_rate    = raw_gyro_z ;
-    accel_x = raw_accel_x ;
-    accel_y = raw_accel_y ;
-    accel_z = raw_accel_z ;
+    // roll_rate   = raw_gyro_x  ;
+    // pitch_rate  = raw_gyro_y  ;
+    // yaw_rate    = raw_gyro_z ;
+    // accel.x = raw_accel_x ;
+    // accel.y = raw_accel_y ;
+    // accel.z = raw_accel_z ;
+    roll_rate   = raw_gyro_y  ;
+    pitch_rate  = raw_gyro_x  ;
+    yaw_rate    = -raw_gyro_z ;
+    accel.x = -raw_accel_y ;
+    accel.y = -raw_accel_x ;
+    accel.z = raw_accel_z ;
+
 
     #ifdef USE_BYPASS_IMU
+    mag.readNormalize();
     mag_x = mag.getMagX();
     mag_y = mag.getMagY();
     mag_z = mag.getMagZ();
@@ -290,9 +312,9 @@ void ScaleIMUData()
     roll_rate   = roll_rate/SCALE_FACTOR_GYRO;
     pitch_rate  = pitch_rate/SCALE_FACTOR_GYRO;
     yaw_rate    = yaw_rate/SCALE_FACTOR_GYRO;
-    accel_x     = accel_x/SCALE_FACTOR_ACCEL*GRAVITY;
-    accel_y     = accel_y/SCALE_FACTOR_ACCEL*GRAVITY;
-    accel_z     = accel_z/SCALE_FACTOR_ACCEL*GRAVITY;
+    accel.x     = accel.x/SCALE_FACTOR_ACCEL*GRAVITY;
+    accel.y     = accel.y/SCALE_FACTOR_ACCEL*GRAVITY;
+    accel.z     = accel.z/SCALE_FACTOR_ACCEL*GRAVITY;
 
 };
 
@@ -301,13 +323,13 @@ void get_imu_offset()
  apply_offset_imu = false;
  for(int16_t i=0;i<5000;i++)
   {
-     GetRawData();
+     mpu.getRotation(&gx, &gy, &gz);
      
   }
   delay(100);
   for(int16_t i=0;i<10000;i++)
   {
-   GetRawData();
+   mpu.getRotation(&gx, &gy, &gz);
    #ifdef LPF_IMU
    roll_rate = gx;
    pitch_rate = gy;
@@ -349,7 +371,7 @@ void get_imu_offset()
 
 void YawOffsetFuntion()
 {
- 	yaw = -yaw +yaw_offset;
+ 	yaw = yaw +yaw_offset;
 	if(yaw<0)
 	{
 		yaw = yaw + 360;
@@ -361,18 +383,27 @@ void YawOffsetFuntion()
 	yaw = yaw - 180;
 }
 
-
-void LinearAcceleration()
+void CalculateGravity()
 {
-   q_accel.w = 0;
-    q_accel.x = accel_x;
-    q_accel.y = accel_y;
-    q_accel.z = accel_z;
-    q_accel = q_imu.getProduct(q_accel);
-    q_accel = q_accel.getProduct(q_imu.getConjugate());
-    lin_accel_x = q_accel.x;
-    lin_accel_y = q_accel.y;
-    lin_accel_z = q_accel.z-GRAVITY;
+    gravity.x = 2 * (q_imu.x*q_imu.z - q_imu.w*q_imu.y);
+    gravity.y = 2 * (q_imu.w*q_imu.x + q_imu.y*q_imu.z);
+    gravity.z = q_imu.w*q_imu.w - q_imu.x*q_imu.x - q_imu.y*q_imu.y + q_imu. z*q_imu.z;
+    gravity.x *=GRAVITY;
+    gravity.y *=GRAVITY;
+    gravity.z *=GRAVITY;
+    
+};
+
+void CalculateLinearAcceleration()
+{
+    lin_accel.x = accel.x-gravity.x;
+    lin_accel.y = accel.y-gravity.y;
+    lin_accel.z = accel.z-gravity.z; 
+}
+
+void CalculateWorldAcceleration()
+{
+    world_accel = lin_accel.getRotated(&q_imu);
 }
 
 void getoffsetaccel()
@@ -417,10 +448,10 @@ void getoffsetaccel()
                     #ifdef MADGWICK_IMU
                     MadgwickUpdate();
                     #endif
-                    LinearAcceleration();
-                    avg_lin_accel_x += lin_accel_x;
-                    avg_lin_accel_y += lin_accel_y;
-                    avg_lin_accel_z += lin_accel_z;
+                    CalculateLinearAcceleration();
+                    avg_lin_accel_x += lin_accel.x;
+                    avg_lin_accel_y += lin_accel.x;
+                    avg_lin_accel_z += lin_accel.z;
                 }
                 avg_lin_accel_x = abs(avg_lin_accel_x)/300;
                 avg_lin_accel_y = abs(avg_lin_accel_y)/300;
@@ -514,9 +545,9 @@ void apply_LPF(LPF_param *lpf)
 void LPF_Update()
 {
     #ifdef LPF_ACCEL
-    LPF_accel_param[0].sample = accel_x;
-    LPF_accel_param[1].sample = accel_y;
-    LPF_accel_param[2].sample = accel_z;
+    LPF_accel_param[0].sample = accel.x;
+    LPF_accel_param[1].sample = accel.y;
+    LPF_accel_param[2].sample = accel.z;
     for (int i = 0; i < 3; i++)
     {
          apply_LPF(&LPF_accel_param[i]);
@@ -524,9 +555,9 @@ void LPF_Update()
     LPF_accel_x=LPF_accel_param[0].output;
     LPF_accel_y=LPF_accel_param[1].output;
     LPF_accel_z=LPF_accel_param[2].output;
-    accel_x = LPF_accel_x;
-    accel_y = LPF_accel_y;
-    accel_z = LPF_accel_z;
+    accel.x = LPF_accel_x;
+    accel.y = LPF_accel_y;
+    accel.z = LPF_accel_z;
     #endif
 
     #ifdef LPF_GYRO
@@ -553,16 +584,18 @@ void LPF_Update()
 void KalmanUpdate()
 {
     //calculate accel angle
-  acc_roll=atan(accel_y/sqrt(accel_x*accel_x+accel_z*accel_z))*RAD2DEG;
-  acc_pitch=-atan(accel_x/sqrt(accel_y*accel_y+accel_z*accel_z))*RAD2DEG;
-  acc_yaw=-atan(accel_x/sqrt(accel_y*accel_y+accel_x*accel_x))*RAD2DEG;
-  applyKalman(roll,kalman_roll_uncertainty,roll_rate,acc_roll);
-  applyKalman(pitch,kalman_pitch_uncertainty,pitch_rate,acc_pitch);
+  acc_roll=atan(accel.y/sqrt(accel.x*accel.x+accel.z*accel.z))*RAD2DEG;
+  acc_pitch=-atan(accel.x/sqrt(accel.y*accel.y+accel.z*accel.z))*RAD2DEG;
+  acc_yaw=-atan(accel.x/sqrt(accel.y*accel.y+accel.x*accel.x))*RAD2DEG;
+  applyKalman(kalman_roll,kalman_roll_uncertainty,lin_accel.x,lin_accel.x*UPDATE_RATE_S,5,1);
+  applyKalman(kalman_pitch,kalman_pitch_uncertainty,roll_rate,0,1,0.5);
 }
-void applyKalman(float &KalmanState, float &KalmanUncertainty, float KalmanInput, float KalmanMeasurement) {
+void applyKalman(float &KalmanState, float &KalmanUncertainty, float KalmanInput, float KalmanMeasurement
+                ,float inputUncertainty,float MeasurementUncertainty) 
+{
   KalmanState=KalmanState+UPDATE_RATE_S*KalmanInput;
-  KalmanUncertainty=KalmanUncertainty + UPDATE_RATE_S * UPDATE_RATE_S * GyroUncertainty * GyroUncertainty;
-  float KalmanGain=KalmanUncertainty * 1/(1*KalmanUncertainty + AccelUncertainty * AccelUncertainty);
+  KalmanUncertainty=KalmanUncertainty + UPDATE_RATE_S * UPDATE_RATE_S * inputUncertainty * inputUncertainty;
+  float KalmanGain=KalmanUncertainty * 1/(1*KalmanUncertainty + MeasurementUncertainty * MeasurementUncertainty);
   KalmanState=KalmanState+KalmanGain * (KalmanMeasurement-KalmanState);
   KalmanUncertainty=(1-KalmanGain) * KalmanUncertainty;
 }
@@ -571,7 +604,10 @@ void applyKalman(float &KalmanState, float &KalmanUncertainty, float KalmanInput
 #ifdef MADGWICK_IMU
 void MadgwickUpdate()
 {
-    _madgwick.update(roll_rate, pitch_rate, yaw_rate, accel_x, accel_y, accel_z, mag_x, mag_y, mag_z);
+    // _madgwick.UpdateTiming((int)micros());
+    // _madgwick.update(roll_rate, pitch_rate, yaw_rate, accel.x, accel.y, accel.z, mag_y, mag_x, -mag_z);
+    _madgwick.updateIMU(roll_rate, pitch_rate, yaw_rate, accel.x, accel.y, accel.z);
+
     
     q_madgwick.w = _madgwick.getW();
     q_madgwick.x = _madgwick.getX();
@@ -593,15 +629,16 @@ void MadgwickUpdate()
 void init_mag()
 {
     mag.begin();
-    mag.setRange(HMC5883L_RANGE_2_5GA);
+    mag.setRange(HMC5883L_RANGE_1_3GA);
     mag.setMeasurementMode(HMC5883L_CONTINOUS);
     mag.setDataRate(HMC5883L_DATARATE_75HZ);
     mag.setSamples(HMC5883L_SAMPLES_1);
+    mag.setOffset(mag_offset_x,mag_offset_y,mag_offset_z,mag_scale);
     delay(26);
 }
 void calucalte_mag_heading()    
 {
-    mag_heading = atan2(mag_y, mag_x);
+    mag_heading = atan2(mag_x, mag_y);
     if(mag_heading < 0)
       mag_heading += 2 * M_PI;
     
