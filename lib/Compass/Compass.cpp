@@ -36,7 +36,7 @@ bool Compass::begin()
 
     setRange(HMC5883L_RANGE_1_3GA);
     setMeasurementMode(HMC5883L_CONTINOUS);
-    setDataRate(HMC5883L_DATARATE_15HZ);
+    setDataRate(HMC5883L_DATARATE_75HZ);
     setSamples(HMC5883L_SAMPLES_1);
 
     mgPerDigit = 0.92f;

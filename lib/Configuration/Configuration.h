@@ -50,7 +50,7 @@
  * @brief Telemetry monitoring
  * 
  */
-// #define TELEM_DEBUG
+#define TELEM_DEBUG
 #ifdef TELEM_DEBUG
 #define TELEM Serial5
 #define TELEM_BAUDRATE 57600
@@ -180,7 +180,7 @@
 #endif 
 
 //for embeded magnetometer
-// #define USE_BYPASS_IMU
+#define USE_BYPASS_IMU
 
 
 #define SCALE_FACTOR_GYRO 16.4
@@ -189,6 +189,12 @@
 #define dmp_update_boost // upgrade data from imu when use dmp to get higher update rate
 #define calibrate_imu
 
+
+/**
+ * @brief BAROMETER CONFIGURATION
+ * 
+ */
+#define USE_BARO
 
 /**************** CONTROL CONFIGURATION ****************/ 
 #define CONTROL_INTEGRATOR
