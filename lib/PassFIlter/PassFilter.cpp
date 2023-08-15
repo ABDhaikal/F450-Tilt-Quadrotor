@@ -47,7 +47,14 @@ float Lowpass::update(float _sample , float _dt)
 
 void Lowpass2p::compute_alpha(float _cutoff_freq,float _sample_freq)
 {
+    if(_cutoff_freq <0.1f) 
+    {
+        cutoff_freq = 1;
+    }
+    else 
+    {
     cutoff_freq = _cutoff_freq;
+    };
     sample_freq = _sample_freq;
     float fr = sample_freq/cutoff_freq;
     float ohm = tanf(M_PI/fr);

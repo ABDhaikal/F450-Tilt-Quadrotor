@@ -11,9 +11,17 @@ float pressurem;
 float temperaturem;
 float raw_baro_altitude;
 float baro_altitude;
-int32_t baro_timer = 0;
-Lowpass baroFilter(0.2, 0.0);
+float baro_altitude_offset = 0;
 
+float last_baro_altitude;
+float raw_baro_altitude_rate;
+float baro_altitude_rate;
+
+int32_t baro_timer = 0;
+int32_t baro_start_timer = 0;
+Lowpass baroFilter(0.2, 0.0);
+Lowpass baroRateFilter(0.2, 0.0);
+bool baro_calibrated = false;
 
 void baro_loop();
 void baro_setup() {
@@ -39,20 +47,24 @@ void baro_setup() {
     refrence_temperature = (temperaturem/temp_counter)+DegreeToKevin;
     reference_pressure = pressurem/temp_counter;
     baro_timer = micros();
-    for(int i=0;i<10;i++)
-    {
-        baro_loop();
-    }
-    baroFilter.reset(baro_altitude);
+    baro_start_timer = millis();
 }
 
 void baro_loop() {
     if(baro.readValues(&pressurem, &temperaturem))
     {
         raw_baro_altitude = 153.8462f * refrence_temperature * (1.0f - expf(0.190259f * logf(pressurem/reference_pressure)));
-        baro_altitude = baroFilter.update(raw_baro_altitude,(micros()-baro_timer)*0.000001f);
+        baro_altitude = baroFilter.update(raw_baro_altitude,(micros()-baro_timer)*0.000001f)-baro_altitude_offset;
+        raw_baro_altitude_rate= (baro_altitude - last_baro_altitude)/(micros()-baro_timer)*1000000;
+        last_baro_altitude = (baro_altitude);
+        baro_altitude_rate = baroRateFilter.update(raw_baro_altitude_rate,(micros()-baro_timer)*0.000001f);
         // Serial.println((micros()-baro_timer));
         baro_timer = micros();
+    }
+    if((millis()-baro_start_timer>5000)&&(!baro_calibrated))
+    {
+        baro_calibrated = true;
+        baro_altitude_offset = baro_altitude;
     }
     
 }

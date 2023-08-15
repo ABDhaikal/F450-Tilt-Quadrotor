@@ -20,6 +20,12 @@ class Lowpass
     float update(float _sample);
     float update(float _sample,float _dt);
     void reset(float _sample){last_output = _sample;};
+    float getcutoff(){return cutoff_freq;};
+    void setalpha(float _alpha){alpha = _alpha;};
+    float getalpha(){return alpha;};
+    float getoutput(){return output;};
+    float getlastoutput(){return last_output;};
+    float getsamplefreq(){return sample_freq;};
 };
 
 class Lowpass2p
@@ -46,6 +52,7 @@ class Lowpass2p
     void init(float _cutoff_freq,float _sample_freq);
     float update(float _sample);
     float update(float _sample,float _dt);
+    float getcutoff_freq(){return cutoff_freq;};
 
 };
 

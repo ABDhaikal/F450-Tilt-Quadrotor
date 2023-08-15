@@ -63,14 +63,18 @@ Quaternion q_madgwick;
 #endif
 
 
+float roll_offset  =-6.6;
+float pitch_offset =-0.3;
+float yaw_offset   =0;
+
 // for offset data
 bool apply_offset_imu = true;
 int offset_gyro_roll =0;
 int offset_gyro_pitch =0;
 int offset_gyro_yaw =0;
-float offset_accel_x =-265;
-float offset_accel_y =-51;
-float offset_accel_z =-50;
+float offset_accel_x =-265  *(4096/SCALE_FACTOR_ACCEL);
+float offset_accel_y =-51   *(4096/SCALE_FACTOR_ACCEL);
+float offset_accel_z =-50   *(4096/SCALE_FACTOR_ACCEL);
 // float offset_accel_x =-263;
 // float offset_accel_y =-48;
 // float offset_accel_z =25;
@@ -165,15 +169,23 @@ void imu_setup()
     // initialize device
     mpu.reset();
     delay(30);
-    mpu.setSleepEnabled(false); // thanks to Jack Elston for pointing this one out!
+    mpu.setSleepEnabled(false);
     mpu.setMemoryBank(0x10, true, true);
-	mpu.setMemoryStartAddress(0x06);
+	// mpu.setMemoryStartAddress(0x06);
     mpu.setMemoryBank(0, false, false);
-    mpu.setClockSource(MPU6050_CLOCK_PLL_XGYRO);
+    mpu.setClockSource(MPU6050_CLOCK_PLL_ZGYRO);
     mpu.setRate(0);
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_8); 
-    mpu.setDLPFMode(MPU6050_DLPF_BW_5);
+    mpu.setDMPEnabled(false);
+    mpu.setDLPFMode(MPU6050_DLPF_BW_20);
+    mpu.setDHPFMode(MPU6050_DHPF_HOLD);
+    // mpu.setFreefallDetectionThreshold(0);
+    // mpu.setYGyroOffsetTC;
+    // mpu.resetAccelerometerPath();
+    // mpu.setMotionDetectionThreshold(100);
+    // mpu.setZeroMotionDetectionThreshold(0);
+    mpu.setSleepEnabled(false); // thanks to Jack Elston for pointing this one out!
     mpu.setFIFOEnabled(true);
     mpu.resetFIFO();
     mpu.setI2CMasterModeEnabled(false);
@@ -196,13 +208,14 @@ void imu_setup()
 	mpu.setXAccelOffset(-1199);
 	mpu.setYAccelOffset(-1001);
 	mpu.setZAccelOffset(1863);
-    mpu.resetFIFO();
+    // mpu.resetFIFO();
     delay(100);
     #ifdef LPF_IMU
     LPF_init();
     #endif
 
     #ifdef calibrate_imu
+    delay(1000);
     get_imu_offset();
     #endif
 
@@ -225,9 +238,9 @@ void imu_loop(attitude_parameter *data)
 {
     imu_loop();
 
-    data->roll = roll;
-    data->pitch = pitch;
-    data->yaw = yaw;
+    data->roll = roll-roll_offset;
+    data->pitch = pitch-pitch_offset;
+    data->yaw = yaw-yaw_offset;
     data->roll_rate = gyro.x;
     data->pitch_rate = gyro.y;
     data->yaw_rate = gyro.z;
@@ -240,9 +253,9 @@ void imu_loop() {
     LPF_Update();
     #endif
 
-    gyro_roll += gyro.x*0.002/SCALE_FACTOR_GYRO;
-    gyro_pitch += gyro.y*0.002/SCALE_FACTOR_GYRO;
-    gyro_yaw += gyro.z*0.002/SCALE_FACTOR_GYRO;
+    // gyro_roll += gyro.x*UPDATE_RATE_S/SCALE_FACTOR_GYRO;
+    // gyro_pitch += gyro.y*UPDATE_RATE_S/SCALE_FACTOR_GYRO;
+    // gyro_yaw += gyro.z*UPDATE_RATE_S/SCALE_FACTOR_GYRO;
     
 
     ScaleIMUData();
@@ -585,7 +598,7 @@ void applyKalman(float &KalmanState, float &KalmanUncertainty, float KalmanInput
   KalmanState=KalmanState+UPDATE_RATE_S*KalmanInput;
   KalmanUncertainty=KalmanUncertainty + UPDATE_RATE_S * UPDATE_RATE_S * inputUncertainty * inputUncertainty;
   float KalmanGain=KalmanUncertainty * 1/(1*KalmanUncertainty + MeasurementUncertainty * MeasurementUncertainty);
-  KalmanState=KalmanState+KalmanGain * (KalmanMeasurement-KalmanState);
+  KalmanState=KalmanState+KalmanGain * (KalmanMeasurement-KalmanState); 
   KalmanUncertainty=(1-KalmanGain) * KalmanUncertainty;
 }
 #endif

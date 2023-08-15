@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <Arduino.h>
 // #ifndef CONFIGURATION_H
 // #define CONFIGURATION_H
 
@@ -65,7 +66,7 @@
  * @brief DEBUG SETTINGS
  * 
  */
-#define DEBUG_FREQ 50 //in Hz
+#define DEBUG_FREQ 25 //in Hz
 #define DEBUG_CYCLE (1000000/DEBUG_FREQ) //in microsecond
 
 #if defined(USB_DEBUG) && defined(TELEM_DEBUG)
@@ -101,12 +102,10 @@
  * @brief GPS Configuration
  * 
  */
-//#define GPS_ //using gps for location detection
+// #define GPS_ //using gps for location detection
 #ifdef GPS_
-    #include <TinyGPSPlus.h>
     #define GPS Serial3
     #define GPS_BAUDRATE 9600
-    TinyGPSPlus gps;
 #endif
 
 /**************** ACTUATOR CONFIGURATION ****************/
@@ -114,6 +113,12 @@
  * @brief brushless motor
  *  
  */
+
+#define force_constant 0.000132f
+#define torque_constant 0.00000683f
+#define MAX_THRUST_MOTOR 1185.0f
+// #define MAX_THRUST_MOTOR 1360.0f
+
 // #define Calibrate_motor
 
 #define MOTOR_1_PIN  0
@@ -131,17 +136,20 @@
 
 #define servo1_pin  1
 #define servo2_pin  3
-#define servo3_pin  9
-#define servo4_pin  5
+#define servo3_pin  5
+#define servo4_pin  9
 
-#define servo1_offset  70
-#define servo2_offset  60
-#define servo3_offset  -10
-#define servo4_offset  -10
+#define servo1_offset  50
+#define servo2_offset  150
+#define servo3_offset  5
+#define servo4_offset  35
 
 #define SERVO_PWM_MIN  988
+#define SERVO_PWM_CENTER  1500
 #define SERVO_PWM_MAX  2012
 
+#define SERVO_ANGLE_MIN  -30
+#define SERVO_ANGLE_MAX  30
 
 
 /**************** MEASUREMENT CONFIGURATION ****************/ 
@@ -194,7 +202,7 @@
  * @brief BAROMETER CONFIGURATION
  * 
  */
-#define USE_BARO
+// #define USE_BARO
 
 /**************** CONTROL CONFIGURATION ****************/ 
 #define CONTROL_INTEGRATOR
@@ -211,11 +219,19 @@
 
 #endif
 
-#define LIMIT_ROLL  10
-#define LIMIT_PITCH 10 
+#define LIMIT_ROLL  20
+#define LIMIT_PITCH 20 
+#define LIMIT_YAW_RATE 15 
 
-#define roll_offset  0
-#define pitch_offset 0
-#define yaw_offset   0
+// #define roll_offset  0
+// #define pitch_offset 0
+// #define yaw_offset   0
+
+#define X_POSITION_CONTROLLER
+// #define Y_POSITION_CONTROLLER
+#define Z_POSITION_CONTROLLER
+#define ROLL_CONTROLLER
+// #define PITCH_CONTROLLER
+#define YAW_CONTROLLER
 
 // #endif
