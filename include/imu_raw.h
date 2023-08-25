@@ -63,8 +63,8 @@ Quaternion q_madgwick;
 #endif
 
 
-float roll_offset  =-6.6;
-float pitch_offset =-0.3;
+float roll_offset  =3.5;
+float pitch_offset =1;
 float yaw_offset   =0;
 
 // for offset data

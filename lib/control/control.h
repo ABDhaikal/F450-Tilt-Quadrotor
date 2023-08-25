@@ -44,6 +44,10 @@ float _dt = dt;
 
 
 float u1,u2,u3,u4, u5, u6;
+float Force_x_input;
+float Force_y_input;
+float Force_z_input;
+
 float yaw_error, yaw_rate_error;
 int m1,m2,m3,m4;
 float s1 = 0,s2= 0,s3= 0,s4= 0;
@@ -87,7 +91,7 @@ int thrust_to_pwm(float input_thrust)
 
 int omega_to_pwm(float input_omega)
 {
-    return (((0.0000006*(input_omega*input_omega))+(input_omega*0.005))*10*1185.0f/MAX_THRUST_MOTOR);
+    return (((0.0000006*(input_omega*input_omega))+(input_omega*0.005))*10);
 }
 
 int omega2_to_pwm(float input_omega2)
@@ -154,20 +158,47 @@ void force_to_pwm(radio_parameter *data_radio)
     u1 = 0;
     s2 = 0;
     s4 = 0;
+    #endif
 
+    #ifdef AUX_SETPOINT
+    if (data_radio->aux1>1500)
+    {
+      u2 = 0;
+      s1 = 0;
+      s3 = 0;
+    }
+    else 
+    {
+      s1 = atan2(2*u2,u3)*RAD2DEG;
+      s3 = atan2(2*u2,u3)*RAD2DEG;
+    }
+    
+    if(data_radio->aux2>1500)
+    {
+      u1 = 0;
+      s2 = 0;
+      s4 = 0;
+    }
+    else
+    {
+    s2 = atan2(2*u1,u3)*RAD2DEG;
+    s4 = atan2(2*u1,u3)*RAD2DEG;
+    }
+    
     #endif
 
  At << 0 , force_constant*sin(s2*DEG_TO_RAD) , 0 , force_constant*sin(s4*DEG_TO_RAD),
         force_constant*sin(s1*DEG_TO_RAD) , 0 , force_constant*sin(s3*DEG_TO_RAD) , 0,
-        force_constant*cos(s1*DEG_TO_RAD) , force_constant*cos(s2*DEG_TO_RAD) , force_constant*cos(s3*DEG_TO_RAD) , force_constant*cos(s4*DEG_TO_RAD),
-       
-        0 , -ARM_LEGHT*force_constant*cos(s2*DEG_TO_RAD)+torque_constant*sin(s2*DEG_TO_RAD) , 0 , ARM_LEGHT*force_constant*cos(s4*DEG_TO_RAD)+torque_constant*sin(s4*DEG_TO_RAD),
-       
-       
-        ARM_LEGHT*force_constant*cos(s1*DEG_TO_RAD)-torque_constant*sin(s1*DEG_TO_RAD) , 0 , -ARM_LEGHT*force_constant*cos(s3*DEG_TO_RAD)-torque_constant*sin(s3*DEG_TO_RAD) , 0,
-        
-        
-        torque_constant*cos(s1*DEG_TO_RAD)+ARM_LEGHT*force_constant*sin(s1*DEG_TO_RAD) , -torque_constant*cos(s2*DEG_TO_RAD)-ARM_LEGHT*force_constant*sin(s2*DEG_TO_RAD) , torque_constant*cos(s3*DEG_TO_RAD)-ARM_LEGHT*force_constant*sin(s3*DEG_TO_RAD) , -torque_constant*cos(s4*DEG_TO_RAD)+ARM_LEGHT*force_constant*sin(s4*DEG_TO_RAD);
+        force_constant*cos(s1*DEG_TO_RAD) , force_constant*cos(s2*DEG_TO_RAD) ,
+         force_constant*cos(s3*DEG_TO_RAD) , force_constant*cos(s4*DEG_TO_RAD),
+        0 , -ARM_LEGHT*force_constant*cos(s2*DEG_TO_RAD)+torque_constant*sin(s2*DEG_TO_RAD) 
+        , 0 , ARM_LEGHT*force_constant*cos(s4*DEG_TO_RAD)+torque_constant*sin(s4*DEG_TO_RAD),
+        ARM_LEGHT*force_constant*cos(s1*DEG_TO_RAD)-torque_constant*sin(s1*DEG_TO_RAD) , 0 ,
+         -ARM_LEGHT*force_constant*cos(s3*DEG_TO_RAD)-torque_constant*sin(s3*DEG_TO_RAD) , 0,
+        torque_constant*cos(s1*DEG_TO_RAD)+ARM_LEGHT*force_constant*sin(s1*DEG_TO_RAD) ,
+         -torque_constant*cos(s2*DEG_TO_RAD)-ARM_LEGHT*force_constant*sin(s2*DEG_TO_RAD) ,
+          torque_constant*cos(s3*DEG_TO_RAD)-ARM_LEGHT*force_constant*sin(s3*DEG_TO_RAD) ,
+           -torque_constant*cos(s4*DEG_TO_RAD)+ARM_LEGHT*force_constant*sin(s4*DEG_TO_RAD);
 
     MatrixXd pmAt=At.completeOrthogonalDecomposition().pseudoInverse();
     MatrixXd Force(6,1);
@@ -216,13 +247,17 @@ void control(attitude_parameter *attitude,attitude_parameter *attitude_ref
 
 
 
-    u1 = (-k_x_position * (attitude->x_position-attitude_ref->x_position)) 
+    Force_x_input = (-k_x_position * (attitude->x_position-attitude_ref->x_position)) 
         +(-k_x_velocity * (attitude->x_velocity-attitude_ref->x_velocity));
-    u2 = (-k_y_position * (attitude->y_position-attitude_ref->y_position) ) 
+    Force_y_input = (-k_y_position * (attitude->y_position-attitude_ref->y_position) ) 
         +(-k_y_velocity * (attitude->y_velocity-attitude_ref->y_velocity));
-    u3 = (-k_z_position * (attitude->z_position-attitude_ref->z_position)) 
+    Force_z_input = (-k_z_position * (attitude->z_position-attitude_ref->z_position)) 
         +(-k_z_velocity * (attitude->z_velocity-attitude_ref->z_velocity));
 
+
+    u1 = Force_x_input;
+    u2 = Force_y_input;
+    u3 = Force_z_input;
     u4 = (-k_roll * (attitude->roll-attitude_ref->roll) 
         +(-k_roll_rate * (attitude->roll_rate-attitude_ref->roll_rate)));
     u5 = (-k_pitch * (attitude->pitch-attitude_ref->pitch) ) 
@@ -277,7 +312,7 @@ void get_setpoint(attitude_parameter *attitude_ref,radio_parameter *data_radio,a
     {
       attitude_ref->roll =  (((float)data_radio->ch_roll-RADIO_PWM_CENTER)/500*LIMIT_ROLL);
       attitude_ref->roll_rate =0;
-    
+
     }
     else
     {
@@ -363,5 +398,94 @@ void get_setpoint(attitude_parameter *attitude_ref,radio_parameter *data_radio,a
 
     #endif
 }
+
+
+void get_auxsetpoint(attitude_parameter *attitude_ref,radio_parameter *data_radio,attitude_parameter *attitude)
+{
+       #ifdef YAW_CONTROLLER
+    if(data_radio->ch_yaw>(RADIO_PWM_CENTER+50)||data_radio->ch_yaw<(RADIO_PWM_CENTER-50))
+    {
+      attitude_ref->yaw = attitude->yaw+ ((((float)data_radio->ch_yaw-RADIO_PWM_CENTER)/500*LIMIT_YAW_RATE)) ;
+    //   attitude_ref->yaw = attitude->yaw;
+        if (attitude_ref->yaw > 180)
+        {
+            attitude_ref->yaw = attitude_ref->yaw - 360;
+        }
+        else if (attitude_ref->yaw < -180)
+        {
+            attitude_ref->yaw = attitude_ref->yaw + 360;
+        }
+    }
+    else
+    {
+      attitude_ref->yaw_rate =0;
+    }
+    #else 
+    attitude_ref->yaw_rate = 0 ;
+    attitude_ref->yaw = 0;
+    #endif
+
+    #ifdef Z_POSITION_CONTROLLER
+    attitude_ref->z_position =  (11620*4*(data_radio->ch_throttle-995)/1000)+1;;
+    #endif
+   
+   if(data_radio->aux1>1500)
+   {
+    if(data_radio->ch_roll>(RADIO_PWM_CENTER+15)||data_radio->ch_roll<(RADIO_PWM_CENTER-15))
+    {
+      attitude_ref->roll =  (((float)data_radio->ch_roll-RADIO_PWM_CENTER)/500*LIMIT_ROLL);
+      attitude_ref->roll_rate =0;
+
+    }
+    else
+    {
+      attitude_ref->roll =0;
+    }
+    attitude_ref->y_position =0;
+   }
+   else
+   {
+    attitude_ref->roll = 0;
+    attitude_ref->roll_rate = 0;
+    if(data_radio->ch_roll>(RADIO_PWM_CENTER+15)||data_radio->ch_roll<(RADIO_PWM_CENTER-15))
+    {
+      attitude_ref->y_position = tan(((float)data_radio->ch_roll-1500)/500*SERVO_ANGLE_MAX*DEG2RAD)*(attitude_ref->z_position)/2;
+    }
+    else
+    {
+      attitude_ref->y_position =0;
+    }
+   }
+
+  if(data_radio->aux2>1500)
+  {
+    if(data_radio->ch_pitch>(RADIO_PWM_CENTER+15)||data_radio->ch_pitch<(RADIO_PWM_CENTER-15))
+    {
+      attitude_ref->pitch =  ((((float)data_radio->ch_pitch-RADIO_PWM_CENTER)/500*-LIMIT_PITCH)) ;
+      attitude_ref->pitch_rate =0;
+    
+    }
+    else
+    {
+      attitude_ref->pitch =0;
+    }
+      attitude_ref->x_position =0;
+  }
+  else
+  {
+    attitude_ref->pitch = 0;
+    attitude_ref->pitch_rate = 0;
+    if(data_radio->ch_pitch>(RADIO_PWM_CENTER+15)||data_radio->ch_pitch<(RADIO_PWM_CENTER-15))
+    {
+      attitude_ref->x_position =  tan(((float)data_radio->ch_pitch-1500)/500*SERVO_ANGLE_MAX*DEG2RAD)*(attitude_ref->z_position)/2;
+        
+    }
+    else
+    {
+      attitude_ref->x_position =0;
+    }
+  }
+}
+
 
 #endif

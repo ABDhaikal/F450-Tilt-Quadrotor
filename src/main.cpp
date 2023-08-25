@@ -74,8 +74,12 @@ void loop() {
   #endif
 
   radio_loop(&radio_data);
-  get_setpoint(&attitude_ref, &radio_data,&attitude);
 
+  #ifdef AUX_SETPOINT
+  get_auxsetpoint(&attitude_ref, &radio_data,&attitude);
+  #else
+  get_setpoint(&attitude_ref, &radio_data,&attitude);
+  #endif
   control(&attitude, &attitude_ref, &radio_data);
   motor_loop(m1, m2, m3,m4);
   servo_loop(s1, s2, s3,s4);
@@ -168,6 +172,9 @@ void debug() {
   // DEBUG2(" INC ",inc);
 
 
+
+  DEBUG2(" radio_data1 ", radio_data.aux1);
+  DEBUG2(" radio_data2 ", radio_data.aux2);
 
 
   // DEBUG2(" m1 ", m1);
@@ -312,23 +319,23 @@ void tune()
   //   };
   //  #endif
    
-     if(incomingByte == 'a')
-    {
-      roll_offset  +=inc;
-    };
-    if(incomingByte == 's')
-    {
-      pitch_offset +=inc;
-    };
-// 
-     if(incomingByte == 'A')
-    {
-      roll_offset -=inc;
-    };
-    if(incomingByte == 'S')
-    {
-      pitch_offset  -=inc;
-    };
+//      if(incomingByte == 'a')
+//     {
+//       roll_offset  +=inc;
+//     };
+//     if(incomingByte == 's')
+//     {
+//       pitch_offset +=inc;
+//     };
+// // 
+//      if(incomingByte == 'A')
+//     {
+//       roll_offset -=inc;
+//     };
+//     if(incomingByte == 'S')
+//     {
+//       pitch_offset  -=inc;
+//     };
 
 
   //    if(incomingByte == 'a')
@@ -373,24 +380,24 @@ void tune()
    };
 
   
-  //    if(incomingByte == 'a')
-  //  {
-  //   roll_offset +=inc;
-  //  };
-  //  if(incomingByte == 's')
-  //  {
-  //   pitch_offset +=inc;
-  //  };
+     if(incomingByte == 'a')
+   {
+    roll_offset +=inc;
+   };
+   if(incomingByte == 's')
+   {
+    pitch_offset +=inc;
+   };
 
    
-  //    if(incomingByte == 'A')
-  //  {
-  //   roll_offset -=inc;
-  //  };
-  //  if(incomingByte == 'S')
-  //  {
-  //   pitch_offset -=inc;
-  //  };
+     if(incomingByte == 'A')
+   {
+    roll_offset -=inc;
+   };
+   if(incomingByte == 'S')
+   {
+    pitch_offset -=inc;
+   };
 
     incomingByte=0;
   }

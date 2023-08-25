@@ -27,5 +27,9 @@ struct radio_parameter{
     bool armed;
     int16_t aux1;
     int16_t aux2;
+    int16_t aux3;
+    int16_t aux4;
+    int16_t aux5;
+    int16_t aux6;
 };
 

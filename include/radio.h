@@ -83,14 +83,21 @@ void radio_loop(radio_parameter *radio_data) {
     radio_data->ch_pitch = data.ch[1] * 0.615f + 890;
     radio_data->ch_throttle = data.ch[2] * 0.615f + 890;
     radio_data->ch_yaw = data.ch[3] * 0.615f + 890;
+    
+    radio_data->armed = data.ch[4] > 1500 ? true : false;
+    alt_hold_mode = data.ch[5] > 1500 ? true : false;
+
+    radio_data->aux1 = constrain(data.ch[6] * 0.615f + 890, RADIO_PWM_MIN, RADIO_PWM_MAX);
+    radio_data->aux2 = constrain(data.ch[7] * 0.615f + 890, RADIO_PWM_MIN, RADIO_PWM_MAX);
+    radio_data->aux3 = constrain(data.ch[8] * 0.615f + 890, RADIO_PWM_MIN, RADIO_PWM_MAX);
+
 
     radio_data->ch_roll = constrain(radio_data->ch_roll, RADIO_PWM_MIN, RADIO_PWM_MAX);
     radio_data->ch_pitch = constrain(radio_data->ch_pitch, RADIO_PWM_MIN, RADIO_PWM_MAX);
     radio_data->ch_throttle = constrain(radio_data->ch_throttle, RADIO_PWM_MIN, RADIO_PWM_MAX);
     radio_data->ch_yaw = constrain(radio_data->ch_yaw, RADIO_PWM_MIN, RADIO_PWM_MAX);
 
-    radio_data->armed = data.ch[4] > 1500 ? true : false;
-    alt_hold_mode = data.ch[5] > 1500 ? true : false;
+   
     signal_lost = data.lost_frame;
   }
 

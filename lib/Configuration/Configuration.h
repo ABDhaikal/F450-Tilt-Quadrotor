@@ -139,8 +139,8 @@
 #define servo3_pin  5
 #define servo4_pin  9
 
-#define servo1_offset  50
-#define servo2_offset  150
+#define servo1_offset  90
+#define servo2_offset  168
 #define servo3_offset  5
 #define servo4_offset  35
 
@@ -212,13 +212,13 @@
 #define roll_integrator 0 
 #define pitch_integrator  0
 #define yaw_integrator 0
-#define k_roll_integrator  23.5
-#define k_pitch_integrator  23.5
-#define k_yaw_integrator  23.5
-#define dt 0.002
+#define k_roll_integrator  23.5/2
+#define k_pitch_integrator  23.5/2
+#define k_yaw_integrator  0
 
 #endif
 
+#define dt 0.002
 #define LIMIT_ROLL  20
 #define LIMIT_PITCH 20 
 #define LIMIT_YAW_RATE 15 
@@ -227,11 +227,15 @@
 // #define pitch_offset 0
 // #define yaw_offset   0
 
+#define AUX_SETPOINT
+
+#ifndef AUX_SETPOINT
 #define X_POSITION_CONTROLLER
 // #define Y_POSITION_CONTROLLER
-#define Z_POSITION_CONTROLLER
 #define ROLL_CONTROLLER
 // #define PITCH_CONTROLLER
+#endif
+#define Z_POSITION_CONTROLLER
 #define YAW_CONTROLLER
 
 // #endif
